@@ -178,13 +178,13 @@ function AuthPage() {
               </Button>
               <button
                 type="button"
-                className="block w-full text-center text-[11px] text-muted-foreground/70 hover:text-foreground mt-2"
+                className="block w-full text-center text-[11px] text-muted-foreground/60 hover:text-foreground mt-2 underline-offset-2 hover:underline"
                 onClick={() => {
                   setErr(null);
                   setMode("signin");
                 }}
               >
-                Já tenho cadastro
+                admin
               </button>
             </div>
           )}
