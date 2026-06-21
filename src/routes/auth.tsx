@@ -176,16 +176,21 @@ function AuthPage() {
               <Button className="w-full" disabled={loading} onClick={handleSignUp}>
                 {loading ? "Criando conta…" : "Criar conta"}
               </Button>
-              <button
-                type="button"
-                className="block w-full text-center text-[11px] text-muted-foreground/60 hover:text-foreground mt-2 underline-offset-2 hover:underline"
-                onClick={() => {
-                  setErr(null);
-                  setMode("signin");
-                }}
-              >
-                admin
-              </button>
+
+              <div className="pt-2 border-t mt-2 space-y-2 text-center">
+                <p className="text-xs text-muted-foreground">Já tem cadastro?</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setErr(null);
+                    setMode("signin");
+                  }}
+                >
+                  Entrar
+                </Button>
+              </div>
             </div>
           )}
           {err && (
