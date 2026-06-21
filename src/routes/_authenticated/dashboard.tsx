@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Navigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchLotes, fetchProprietarios, fetchQuadras, type Lote, type Proprietario, type Quadra } from "@/lib/queries";
@@ -13,6 +15,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 function Dashboard() {
+  const { isAdmin, loading } = useAuth();
   const [quadras, setQuadras] = useState<Quadra[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [props, setProps] = useState<Proprietario[]>([]);
@@ -24,6 +27,8 @@ function Dashboard() {
       setProps(p);
     });
   }, []);
+
+  if (!loading && !isAdmin) return <Navigate to="/mapa" />;
 
   const totalLotes = lotes.length;
   const semCadastro = lotes.filter((l) => l.status === "sem_cadastro").length;

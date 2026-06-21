@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/_authenticated/relatorios")({
 });
 
 function Relatorios() {
+  const { isAdmin, loading } = useAuth();
   const [quadras, setQuadras] = useState<Quadra[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [props, setProps] = useState<Proprietario[]>([]);
@@ -24,6 +26,8 @@ function Relatorios() {
       setProps(p);
     });
   }, []);
+
+  if (!loading && !isAdmin) return <Navigate to="/mapa" />;
 
   const quadraName = (id: string) => quadras.find((q) => q.id === id)?.nome ?? "?";
   const loteInfo = (id: string) => {
