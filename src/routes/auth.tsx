@@ -57,8 +57,18 @@ function AuthPage() {
     setLoading(true);
     try {
       if (!phone.trim() || !password.trim()) throw new Error("Informe telefone e senha.");
-      await signInWithPhonePassword(phone, password);
-      navigate({ to: "/mapa" });
+      const { user } = await signInWithPhonePassword(phone, password);
+      let dest: "/admin" | "/mapa" = "/mapa";
+      if (user) {
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id);
+        if (roles?.some((r) => r.role === "admin" || r.role === "coordenador")) {
+          dest = "/admin";
+        }
+      }
+      navigate({ to: dest });
     } catch (e: any) {
       setErr(traduzirErro(e));
     } finally {
