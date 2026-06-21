@@ -17,13 +17,18 @@ export async function signUpWithPhonePassword(
   name: string,
   password: string,
   termoTexto?: string,
+  dataNascimento?: string,
 ) {
   const email = emailForPhone(phone);
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: { full_name: name.trim(), phone: normalizePhone(phone) },
+      data: {
+        full_name: name.trim(),
+        phone: normalizePhone(phone),
+        data_nascimento: dataNascimento || "",
+      },
       emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
     },
   });
@@ -33,7 +38,11 @@ export async function signUpWithPhonePassword(
   if (data.user && termoTexto) {
     await supabase
       .from("profiles")
-      .update({ aceite_termo_at: new Date().toISOString(), aceite_termo_texto: termoTexto })
+      .update({
+        aceite_termo_at: new Date().toISOString(),
+        aceite_termo_texto: termoTexto,
+        ...(dataNascimento ? { data_nascimento: dataNascimento } : {}),
+      })
       .eq("id", data.user.id);
   }
   return data;
