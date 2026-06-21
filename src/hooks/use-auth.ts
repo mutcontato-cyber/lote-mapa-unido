@@ -19,13 +19,14 @@ export function useAuth() {
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      setLoading(true);
       setSession(s);
       setUser(s?.user ?? null);
     });
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
-      setLoading(false);
+      if (!data.session?.user) setLoading(false);
     });
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -34,16 +35,24 @@ export function useAuth() {
     if (!user) {
       setProfile(null);
       setRoles([]);
+      setLoading(false);
       return;
     }
+    let active = true;
+    setLoading(true);
     (async () => {
       const [{ data: p }, { data: r }] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
         supabase.from("user_roles").select("role").eq("user_id", user.id),
       ]);
+      if (!active) return;
       setProfile((p as Profile) ?? null);
       setRoles(((r as { role: AppRole }[]) ?? []).map((x) => x.role));
+      setLoading(false);
     })();
+    return () => {
+      active = false;
+    };
   }, [user]);
 
   const isAdmin = roles.includes("admin");

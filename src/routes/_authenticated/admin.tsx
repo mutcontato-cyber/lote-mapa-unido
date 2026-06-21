@@ -58,7 +58,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 });
 
 function AdminPage() {
-  const { isAdmin, isStaff } = useAuth();
+  const { isAdmin, isStaff, loading } = useAuth();
   const [quadras, setQuadras] = useState<Quadra[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [novaQuadra, setNovaQuadra] = useState("");
@@ -269,6 +269,16 @@ function AdminPage() {
     const csv = toCSV(cadastros.map(rowToObject));
     const data = new Date().toISOString().slice(0, 10);
     downloadFile(`cadastros-adecaf-${data}.csv`, csv);
+  }
+
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="mx-auto max-w-3xl px-4 py-12">
+          <p className="text-sm text-muted-foreground">Carregando acesso administrativo…</p>
+        </div>
+      </AppShell>
+    );
   }
 
   if (!isStaff) {

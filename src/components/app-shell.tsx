@@ -17,7 +17,7 @@ const NAV = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { profile, isAdmin, isStaff } = useAuth();
+  const { profile, isAdmin, isStaff, loading } = useAuth();
   const nav = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
@@ -27,7 +27,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     nav({ to: "/auth" });
   }
 
-  const visibleNav = NAV.filter((n) => !n.adminOnly || isAdmin);
+  const visibleNav = NAV.filter((n) => !n.adminOnly || (!loading && isAdmin));
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -64,8 +64,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="ml-auto flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Olá,</span>
-              <span className="font-medium">{profile?.full_name ?? "…"}</span>
-              {isAdmin ? (
+              <span className="font-medium">{loading ? "Carregando…" : profile?.full_name ?? "…"}</span>
+              {loading ? null : isAdmin ? (
                 <Badge>Admin</Badge>
               ) : isStaff ? (
                 <Badge variant="secondary">Coordenador</Badge>

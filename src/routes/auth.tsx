@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,11 +32,6 @@ export const Route = createFileRoute("/auth")({
       { name: "description", content: "Acesso à plataforma da Associação ADECAF para o abaixo-assinado de asfaltamento." },
     ],
   }),
-  beforeLoad: async () => {
-    if (typeof window === "undefined") return;
-    const { data } = await supabase.auth.getSession();
-    if (data.session) throw redirect({ to: "/" });
-  },
   component: AuthPage,
 });
 
@@ -51,6 +46,7 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [mode, setMode] = useState<"signup" | "signin">("signup");
+  const [adminLogin, setAdminLogin] = useState(false);
 
   async function handleSignIn() {
     setErr(null);
@@ -67,6 +63,10 @@ function AuthPage() {
         if (roles?.some((r) => r.role === "admin" || r.role === "coordenador")) {
           dest = "/admin";
         }
+      }
+      if (adminLogin && dest !== "/admin") {
+        await supabase.auth.signOut();
+        throw new Error("Esse cadastro não tem acesso de administrador.");
       }
       navigate({ to: dest });
     } catch (e: any) {
@@ -123,6 +123,7 @@ function AuthPage() {
             <div className="space-y-4 mt-2">
               <Field label="Telefone" value={phone} onChange={setPhone} placeholder="(00) 00000-0000" />
               <Field label="Senha" value={password} onChange={setPassword} placeholder="Sua senha" type="password" />
+              {adminLogin && <p className="text-xs font-medium text-primary">Acesso administrativo</p>}
               <p className="text-xs text-muted-foreground -mt-2">
                 Esqueceu a senha?{" "}
                 <a
@@ -143,6 +144,7 @@ function AuthPage() {
                 className="block w-full text-center text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
                 onClick={() => {
                   setErr(null);
+                  setAdminLogin(false);
                   setMode("signup");
                 }}
               >
@@ -195,6 +197,7 @@ function AuthPage() {
                   className="w-full"
                   onClick={() => {
                     setErr(null);
+                  setAdminLogin(false);
                     setMode("signin");
                   }}
                 >
@@ -204,6 +207,8 @@ function AuthPage() {
                   type="button"
                   onClick={() => {
                     setErr(null);
+                    setAdminLogin(true);
+                    setPassword("");
                     setMode("signin");
                   }}
                   className="text-[11px] text-muted-foreground/60 hover:text-foreground underline-offset-2 hover:underline mt-1"
