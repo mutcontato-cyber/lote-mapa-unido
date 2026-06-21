@@ -238,6 +238,77 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
             />
           </div>
 
+          <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+            <div>
+              <Label className="text-xs">Data de nascimento</Label>
+              <Input
+                type="date"
+                value={dataNascimento}
+                onChange={(e) => setDataNascimento(e.target.value)}
+                max={new Date().toISOString().slice(0, 10)}
+              />
+            </div>
+            <div className="text-xs text-muted-foreground pb-2 whitespace-nowrap">
+              {idade !== null ? <span><strong>{idade}</strong> anos</span> : "—"}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2 rounded-md border p-2">
+              <Checkbox
+                id="chefe-casa"
+                checked={chefeCasa}
+                onCheckedChange={(v) => setChefeCasa(!!v)}
+              />
+              <label htmlFor="chefe-casa" className="text-xs cursor-pointer leading-tight">
+                Sou o <strong>chefe da casa</strong>
+              </label>
+            </div>
+            <div>
+              <Label className="text-xs">Pessoas na casa</Label>
+              <Input
+                type="number"
+                min={1}
+                max={30}
+                value={qtdMoradores}
+                onChange={(e) => setQtdMoradores(e.target.value)}
+                placeholder="Ex.: 4"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2 rounded-md border p-3">
+            <Label className="text-xs font-semibold">
+              Pesquisa: o que está faltando na nossa rua?
+            </Label>
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              Para cada item, marque se precisa ou não.
+            </p>
+            <div className="space-y-1.5">
+              {MELHORIAS_OPCOES.map((m) => (
+                <div key={m.key} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="flex-1">{m.label}</span>
+                  <RadioGroup
+                    value={melhorias[m.key] ?? ""}
+                    onValueChange={(v) =>
+                      setMelhorias((prev) => ({ ...prev, [m.key]: v as "sim" | "nao" }))
+                    }
+                    className="flex gap-3"
+                  >
+                    <div className="flex items-center gap-1">
+                      <RadioGroupItem value="sim" id={`${m.key}-sim`} />
+                      <label htmlFor={`${m.key}-sim`} className="cursor-pointer">Precisa</label>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <RadioGroupItem value="nao" id={`${m.key}-nao`} />
+                      <label htmlFor={`${m.key}-nao`} className="cursor-pointer">Não</label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-2 rounded-md border p-3">
             <Label className="text-xs font-semibold">Tipo de cadastro</Label>
             <RadioGroup value={tipoLote} onValueChange={(v) => setTipoLote(v as "inteiro" | "meio")}>
