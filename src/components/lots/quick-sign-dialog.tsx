@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Info, CheckCircle2 } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Info, CheckCircle2, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Lote, Quadra, Proprietario } from "@/lib/queries";
+import { recomputeLoteStatus } from "@/lib/queries";
+import { useAuth } from "@/hooks/use-auth";
+import { ADMIN_WHATSAPP, ADMIN_NOME, waLink } from "@/lib/admin-config";
 
 interface Props {
   lote: Lote;
@@ -19,42 +23,95 @@ interface Props {
 }
 
 export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChange, onSaved }: Props) {
+  const { profile, user, isStaff } = useAuth();
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
+  const [tipoLote, setTipoLote] = useState<"inteiro" | "meio">("inteiro");
   const [loading, setLoading] = useState(false);
+  const [confirmado, setConfirmado] = useState<{ mensagem: string } | null>(null);
+
+  // Auto-preencher com dados do morador quando abrir o dialog
+  useEffect(() => {
+    if (open && profile) {
+      setNome(profile.full_name || "");
+      setTelefone(profile.phone || "");
+      setConfirmado(null);
+    }
+    if (!open) {
+      setConfirmado(null);
+    }
+  }, [open, profile]);
+
+  // Quanto já está ocupado neste lote
+  const fracaoOcupada = proprietarios.reduce((s, p) => s + Number(p.fracao || 0), 0);
+  const disponivelInteiro = fracaoOcupada === 0;
+  const disponivelMeio = fracaoOcupada <= 50;
+
+  // Se só sobra meio lote, força a opção
+  useEffect(() => {
+    if (open) {
+      if (!disponivelInteiro && disponivelMeio) setTipoLote("meio");
+      else setTipoLote("inteiro");
+    }
+  }, [open, disponivelInteiro, disponivelMeio]);
+
+  // Já cadastrou neste lote? (mesmo user_id no profile e mesmo telefone)
+  const jaCadastradoAqui = !!user && proprietarios.some((p) => p.telefone === profile?.phone);
 
   async function handleSign() {
     if (!nome.trim() || !telefone.trim()) {
       toast.error("Preencha nome e telefone");
       return;
     }
+    if (!disponivelInteiro && !disponivelMeio) {
+      toast.error("Este lote já está totalmente ocupado.");
+      return;
+    }
+    if (tipoLote === "inteiro" && !disponivelInteiro) {
+      toast.error("Este lote já tem alguém cadastrado. Selecione 'Meio lote'.");
+      return;
+    }
     setLoading(true);
     try {
+      const fracao = tipoLote === "inteiro" ? 100 : 50;
+      const situacao = tipoLote === "meio" ? "Meio lote" : null;
+
       const { error: insErr } = await supabase.from("proprietarios").insert({
         lote_id: lote.id,
         nome: nome.trim(),
         telefone: telefone.trim(),
         whatsapp: telefone.trim(),
-        fracao: 100,
+        fracao,
+        situacao,
         apoia_asfalto: true,
         assinatura_status: "confirmou",
       });
       if (insErr) throw insErr;
-      const { error: upErr } = await supabase
-        .from("lotes")
-        .update({ status: "cadastrado" })
-        .eq("id", lote.id);
-      if (upErr) throw upErr;
-      toast.success("Apoio registrado! Obrigado por participar 💚");
-      setNome("");
-      setTelefone("");
+
+      // recompute lot status (vai ficar verde)
+      await recomputeLoteStatus(lote.id);
+
+      // Mensagem para o morador enviar pro admin
+      const mensagem =
+        `Olá ${ADMIN_NOME.split(" ")[0]}, sou ${nome.trim()} e estou apoiando o asfaltamento da ADECAF Rua Digna.\n\n` +
+        `📍 Quadra ${quadra.nome} · Lote ${lote.numero}` +
+        (tipoLote === "meio" ? " (meio lote)" : " (lote inteiro)") +
+        `\n📞 Meu contato: ${telefone.trim()}\n\nLi e concordo com o termo de autorização da ADECAF.`;
+
+      setConfirmado({ mensagem });
       onSaved?.();
-      onOpenChange(false);
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao registrar apoio");
     } finally {
       setLoading(false);
     }
+  }
+
+  function abrirWhatsApp() {
+    if (!confirmado) return;
+    window.open(waLink(ADMIN_WHATSAPP, confirmado.mensagem), "_blank");
+    toast.success("Apoio registrado! 💚 Lote agora está verde no mapa.");
+    onOpenChange(false);
   }
 
   const jaApoiam = proprietarios.filter((p) => p.apoia_asfalto !== false);
@@ -71,6 +128,29 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
           </DialogDescription>
         </DialogHeader>
 
+        {confirmado ? (
+          <div className="space-y-3">
+            <Alert className="border-[var(--status-confirmado)]/40 bg-[var(--status-confirmado)]/5">
+              <CheckCircle2 className="h-4 w-4 text-[var(--status-confirmado)]" />
+              <AlertDescription className="text-sm">
+                <strong>Apoio registrado!</strong> Agora envie a mensagem de confirmação para {ADMIN_NOME} pelo WhatsApp:
+              </AlertDescription>
+            </Alert>
+            <div className="rounded-md border bg-muted/40 p-3 text-xs whitespace-pre-line">
+              {confirmado.mensagem}
+            </div>
+            <DialogFooter className="flex-col sm:flex-col gap-2">
+              <Button onClick={abrirWhatsApp} className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white">
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Enviar confirmação no WhatsApp
+              </Button>
+              <Button variant="ghost" className="w-full" onClick={() => onOpenChange(false)}>
+                Fechar (enviar depois)
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : (
+          <>
         {jaApoiam.length > 0 && (
           <div className="rounded-md border bg-muted/40 p-3 text-sm">
             <div className="font-medium mb-1 flex items-center gap-1">
@@ -79,10 +159,18 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
             </div>
             <ul className="text-muted-foreground space-y-0.5">
               {jaApoiam.map((p) => (
-                <li key={p.id}>• {p.nome}</li>
+                <li key={p.id}>• {p.nome}{p.fracao && p.fracao !== 100 ? ` (${p.fracao}%)` : ""}</li>
               ))}
             </ul>
           </div>
+        )}
+
+        {jaCadastradoAqui && (
+          <Alert variant="destructive">
+            <AlertDescription className="text-xs">
+              Você já tem cadastro neste lote.
+            </AlertDescription>
+          </Alert>
         )}
 
         <div className="space-y-3">
@@ -99,13 +187,32 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
               inputMode="tel"
             />
           </div>
+
+          <div className="space-y-2 rounded-md border p-3">
+            <Label className="text-xs font-semibold">Tipo de cadastro</Label>
+            <RadioGroup value={tipoLote} onValueChange={(v) => setTipoLote(v as "inteiro" | "meio")}>
+              <div className="flex items-start gap-2">
+                <RadioGroupItem value="inteiro" id="tp-int" disabled={!disponivelInteiro} className="mt-0.5" />
+                <label htmlFor="tp-int" className={`text-xs cursor-pointer ${!disponivelInteiro ? "opacity-50" : ""}`}>
+                  <strong>Lote inteiro</strong> – sou o único dono / morador deste lote.
+                  {!disponivelInteiro && <span className="block text-destructive">Indisponível: lote já tem cadastro.</span>}
+                </label>
+              </div>
+              <div className="flex items-start gap-2">
+                <RadioGroupItem value="meio" id="tp-meio" disabled={!disponivelMeio} className="mt-0.5" />
+                <label htmlFor="tp-meio" className={`text-xs cursor-pointer ${!disponivelMeio ? "opacity-50" : ""}`}>
+                  <strong>Meio lote</strong> – este lote foi dividido entre 2 famílias (cada uma cadastra a sua metade).
+                </label>
+              </div>
+            </RadioGroup>
+          </div>
         </div>
 
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription className="text-xs">
-            Este cadastro <strong>não substitui</strong> a assinatura presencial do abaixo-assinado, mas
-            mostra para a Prefeitura e para os vizinhos quem está apoiando.
+            Ao confirmar, vai abrir o <strong>WhatsApp</strong> para você enviar a mensagem de
+            apoio para {ADMIN_NOME}. Seu lote fica verde no mapa.
           </AlertDescription>
         </Alert>
 
@@ -113,10 +220,12 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancelar
           </Button>
-          <Button onClick={handleSign} disabled={loading}>
-            {loading ? "Enviando…" : "Quero apoiar 💚"}
+          <Button onClick={handleSign} disabled={loading || jaCadastradoAqui}>
+            {loading ? "Enviando…" : "Confirmar apoio 💚"}
           </Button>
         </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

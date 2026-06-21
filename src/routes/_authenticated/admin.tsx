@@ -12,9 +12,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchQuadras, fetchLotes, type Quadra, type Lote } from "@/lib/queries";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, KeyRound, MessageCircle, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { generatePasswordReset, deleteMorador } from "@/lib/admin.functions";
+import { ADMIN_NOME, waLink } from "@/lib/admin-config";
+
+interface PasswordReset {
+  id: string;
+  user_id: string | null;
+  phone: string;
+  full_name: string | null;
+  status: string;
+  nova_senha: string | null;
+  requested_at: string;
+  fulfilled_at: string | null;
+}
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Administração — ADECAF Rua Digna" }] }),
@@ -28,6 +42,10 @@ function AdminPage() {
   const [novaQuadra, setNovaQuadra] = useState("");
   const [qtdLotes, setQtdLotes] = useState(20);
   const [users, setUsers] = useState<{ id: string; full_name: string; phone: string; roles: AppRole[] }[]>([]);
+  const [resets, setResets] = useState<PasswordReset[]>([]);
+
+  const generateResetFn = useServerFn(generatePasswordReset);
+  const deleteMoradorFn = useServerFn(deleteMorador);
 
   async function load() {
     const [qs, ls] = await Promise.all([fetchQuadras(), fetchLotes()]);
@@ -43,6 +61,12 @@ function AdminPage() {
         map.set(r.user_id, arr);
       });
       setUsers((profs ?? []).map((p: any) => ({ ...p, roles: map.get(p.id) ?? [] })));
+
+      const { data: rs } = await supabase
+        .from("password_resets")
+        .select("*")
+        .order("requested_at", { ascending: false });
+      setResets((rs as PasswordReset[]) ?? []);
     }
   }
 
@@ -84,6 +108,48 @@ function AdminPage() {
     load();
   }
 
+  async function gerarSenhaNova(reset: PasswordReset) {
+    try {
+      const res = await generateResetFn({ data: { resetId: reset.id } });
+      const msg =
+        `Olá ${res.full_name ?? ""}, aqui é da ADECAF Rua Digna.\n\n` +
+        `Sua nova senha é: *${res.senha}*\n\n` +
+        `Use seu telefone (${res.phone}) e essa senha para entrar. Recomendamos trocar depois pedindo nova redefinição.`;
+      // Abre WhatsApp do morador para o admin enviar a senha
+      window.open(waLink(res.phone, msg), "_blank");
+      toast.success(`Senha gerada: ${res.senha}`);
+      load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao gerar senha");
+    }
+  }
+
+  function reabrirWhatsApp(reset: PasswordReset) {
+    if (!reset.nova_senha) return;
+    const msg =
+      `Olá ${reset.full_name ?? ""}, aqui é da ADECAF Rua Digna.\n\n` +
+      `Sua nova senha é: *${reset.nova_senha}*\n\n` +
+      `Use seu telefone (${reset.phone}) e essa senha para entrar.`;
+    window.open(waLink(reset.phone, msg), "_blank");
+  }
+
+  async function excluirReset(id: string) {
+    if (!confirm("Excluir este pedido?")) return;
+    await supabase.from("password_resets").delete().eq("id", id);
+    load();
+  }
+
+  async function excluirMorador(userId: string, nome: string) {
+    if (!confirm(`Excluir o cadastro completo de ${nome}? Essa ação não pode ser desfeita.`)) return;
+    try {
+      await deleteMoradorFn({ data: { userId } });
+      toast.success("Cadastro excluído");
+      load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao excluir");
+    }
+  }
+
   if (!isStaff) {
     return (
       <AppShell>
@@ -103,6 +169,74 @@ function AdminPage() {
       <Toaster position="top-right" richColors />
       <div className="mx-auto max-w-5xl px-4 py-6 space-y-6">
         <h1 className="text-2xl font-bold">Administração</h1>
+
+        {isAdmin && (
+          <Card className="border-amber-300 bg-amber-50/40">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <KeyRound className="h-5 w-5 text-amber-600" />
+                Pedidos de senha esquecida
+                {resets.filter((r) => r.status === "pendente").length > 0 && (
+                  <Badge variant="destructive">{resets.filter((r) => r.status === "pendente").length} pendente(s)</Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {resets.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum pedido no momento.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Telefone</TableHead>
+                      <TableHead>Pedido em</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {resets.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="font-medium">{r.full_name ?? "—"}</TableCell>
+                        <TableCell>{r.phone}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {new Date(r.requested_at).toLocaleString("pt-BR")}
+                        </TableCell>
+                        <TableCell>
+                          {r.status === "pendente" ? (
+                            <Badge variant="destructive">Pendente</Badge>
+                          ) : (
+                            <Badge variant="secondary">Atendido</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right space-x-1">
+                          {r.status === "pendente" ? (
+                            <Button size="sm" onClick={() => gerarSenhaNova(r)}>
+                              <KeyRound className="h-3.5 w-3.5 mr-1" />
+                              Gerar senha
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="outline" onClick={() => reabrirWhatsApp(r)}>
+                              <MessageCircle className="h-3.5 w-3.5 mr-1" />
+                              Reenviar
+                            </Button>
+                          )}
+                          <Button size="icon" variant="ghost" onClick={() => excluirReset(r.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+              <p className="text-xs text-muted-foreground mt-3">
+                Ao clicar em <strong>Gerar senha</strong>, o sistema cria uma senha aleatória, atualiza o cadastro do morador e abre o WhatsApp para você enviar a senha.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
@@ -148,7 +282,7 @@ function AdminPage() {
         {isAdmin && (
           <Card>
             <CardHeader>
-              <CardTitle>Usuários e papéis</CardTitle>
+              <CardTitle>Moradores cadastrados</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
@@ -158,6 +292,7 @@ function AdminPage() {
                     <TableHead>Telefone</TableHead>
                     <TableHead>Papel atual</TableHead>
                     <TableHead>Alterar</TableHead>
+                    <TableHead className="text-right">Excluir</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -177,6 +312,16 @@ function AdminPage() {
                             <SelectItem value="visitante">Visitante</SelectItem>
                           </SelectContent>
                         </Select>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => excluirMorador(u.id, u.full_name)}
+                          title="Excluir cadastro"
+                        >
+                          <UserX className="h-4 w-4 text-destructive" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

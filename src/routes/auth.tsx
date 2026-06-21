@@ -6,9 +6,23 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { signInWithPhoneName, signUpWithPhoneName } from "@/lib/auth-helpers";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  signInWithPhonePassword,
+  signUpWithPhonePassword,
+  requestPasswordReset,
+} from "@/lib/auth-helpers";
 import { supabase } from "@/integrations/supabase/client";
-import { MapPin } from "lucide-react";
+import { MapPin, CheckCircle2 } from "lucide-react";
+import { TERMO_TITULO, TERMO_TEXTO, TERMO_CHECKBOX } from "@/lib/termo";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -29,19 +43,66 @@ function AuthPage() {
   const navigate = useNavigate();
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [aceiteTermo, setAceiteTermo] = useState(false);
+  const [showTermo, setShowTermo] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetPhone, setResetPhone] = useState("");
+  const [resetName, setResetName] = useState("");
 
-  async function handle(action: "in" | "up") {
+  async function handleSignIn() {
     setErr(null);
     setLoading(true);
     try {
-      if (!phone.trim() || !name.trim()) throw new Error("Informe telefone e nome.");
-      if (action === "up") await signUpWithPhoneName(phone, name);
-      else await signInWithPhoneName(phone, name);
-      navigate({ to: "/" });
+      if (!phone.trim() || !password.trim()) throw new Error("Informe telefone e senha.");
+      await signInWithPhonePassword(phone, password);
+      navigate({ to: "/mapa" });
     } catch (e: any) {
-      setErr(e?.message ?? "Falha ao autenticar.");
+      setErr(e?.message ?? "Falha ao entrar.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSignUp() {
+    setErr(null);
+    if (!phone.trim() || !name.trim() || !password.trim()) {
+      setErr("Preencha nome, telefone e senha.");
+      return;
+    }
+    if (password.length < 6) {
+      setErr("A senha precisa ter ao menos 6 caracteres.");
+      return;
+    }
+    if (!aceiteTermo) {
+      setErr("Você precisa ler e aceitar o Termo de Autorização para continuar.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await signUpWithPhonePassword(phone, name, password, TERMO_TEXTO);
+      navigate({ to: "/mapa" });
+    } catch (e: any) {
+      setErr(e?.message ?? "Falha ao criar conta.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleReset() {
+    setErr(null);
+    if (!resetPhone.trim()) {
+      setErr("Informe o telefone usado no cadastro.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await requestPasswordReset(resetPhone, resetName);
+      setResetSent(true);
+    } catch (e: any) {
+      setErr(e?.message ?? "Falha ao registrar pedido.");
     } finally {
       setLoading(false);
     }
@@ -60,27 +121,78 @@ function AuthPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="in" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+          <Tabs defaultValue="in" className="w-full" onValueChange={() => setErr(null)}>
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="in">Entrar</TabsTrigger>
               <TabsTrigger value="up">Cadastrar</TabsTrigger>
+              <TabsTrigger value="rec">Esqueci</TabsTrigger>
             </TabsList>
+
             <TabsContent value="in" className="space-y-4 mt-4">
               <Field label="Telefone" value={phone} onChange={setPhone} placeholder="(00) 00000-0000" />
-              <Field label="Nome completo" value={name} onChange={setName} placeholder="Maria Silva" />
-              <Button className="w-full" disabled={loading} onClick={() => handle("in")}>
+              <Field label="Senha" value={password} onChange={setPassword} placeholder="Sua senha" type="password" />
+              <Button className="w-full" disabled={loading} onClick={handleSignIn}>
                 {loading ? "Entrando…" : "Entrar"}
               </Button>
             </TabsContent>
-            <TabsContent value="up" className="space-y-4 mt-4">
-              <Field label="Telefone" value={phone} onChange={setPhone} placeholder="(00) 00000-0000" />
+
+            <TabsContent value="up" className="space-y-3 mt-4">
               <Field label="Nome completo" value={name} onChange={setName} placeholder="Maria Silva" />
-              <Button className="w-full" disabled={loading} onClick={() => handle("up")}>
+              <Field label="Telefone / WhatsApp" value={phone} onChange={setPhone} placeholder="(62) 9 9999-9999" />
+              <Field label="Crie uma senha" value={password} onChange={setPassword} placeholder="Mínimo 6 caracteres" type="password" />
+
+              <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3">
+                <Checkbox
+                  id="termo"
+                  checked={aceiteTermo}
+                  onCheckedChange={(v) => setAceiteTermo(v === true)}
+                  className="mt-0.5"
+                />
+                <label htmlFor="termo" className="text-xs leading-snug cursor-pointer">
+                  {TERMO_CHECKBOX}{" "}
+                  <button
+                    type="button"
+                    className="text-primary underline font-medium"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowTermo(true);
+                    }}
+                  >
+                    Ler termo completo
+                  </button>
+                </label>
+              </div>
+
+              <Button className="w-full" disabled={loading} onClick={handleSignUp}>
                 {loading ? "Criando conta…" : "Criar conta"}
               </Button>
               <p className="text-xs text-muted-foreground">
                 O primeiro usuário cadastrado se torna Administrador automaticamente.
               </p>
+            </TabsContent>
+
+            <TabsContent value="rec" className="space-y-3 mt-4">
+              {resetSent ? (
+                <Alert>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <AlertDescription className="text-sm">
+                    Pedido enviado! O administrador da ADECAF vai gerar uma senha nova e enviar para você por
+                    WhatsApp em breve.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Informe seu telefone e nome. O administrador vai gerar uma senha nova e enviar para você por
+                    WhatsApp.
+                  </p>
+                  <Field label="Telefone do cadastro" value={resetPhone} onChange={setResetPhone} placeholder="(00) 00000-0000" />
+                  <Field label="Seu nome" value={resetName} onChange={setResetName} placeholder="Maria Silva" />
+                  <Button className="w-full" disabled={loading} onClick={handleReset}>
+                    {loading ? "Enviando…" : "Pedir nova senha"}
+                  </Button>
+                </>
+              )}
             </TabsContent>
           </Tabs>
           {err && (
@@ -90,15 +202,49 @@ function AuthPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={showTermo} onOpenChange={setShowTermo}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{TERMO_TITULO}</DialogTitle>
+            <DialogDescription>Leia com atenção antes de aceitar.</DialogDescription>
+          </DialogHeader>
+          <div className="text-sm whitespace-pre-line leading-relaxed text-foreground">
+            {TERMO_TEXTO}
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setAceiteTermo(true);
+                setShowTermo(false);
+              }}
+            >
+              Li e Concordo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
   return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+    <div className="space-y-1.5">
+      <Label className="text-xs">{label}</Label>
+      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
     </div>
   );
 }
