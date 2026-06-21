@@ -64,7 +64,7 @@ function AuthPage() {
           .from("user_roles")
           .select("role")
           .eq("user_id", user.id);
-        if (roles?.some((r) => r.role === "admin" || r.role === "staff")) {
+        if (roles?.some((r) => r.role === "admin" || r.role === "coordenador")) {
           dest = "/admin";
         }
       }
