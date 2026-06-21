@@ -14,16 +14,198 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      lotes: {
+        Row: {
+          created_at: string
+          id: string
+          numero: string
+          observacoes: string | null
+          quadra_id: string
+          status: Database["public"]["Enums"]["lote_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          numero: string
+          observacoes?: string | null
+          quadra_id: string
+          status?: Database["public"]["Enums"]["lote_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          numero?: string
+          observacoes?: string | null
+          quadra_id?: string
+          status?: Database["public"]["Enums"]["lote_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lotes_quadra_id_fkey"
+            columns: ["quadra_id"]
+            isOneToOne: false
+            referencedRelation: "quadras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          phone: string
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          id: string
+          phone: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          phone?: string
+        }
+        Relationships: []
+      }
+      proprietarios: {
+        Row: {
+          apoia_asfalto: boolean | null
+          assinatura_status: Database["public"]["Enums"]["assinatura_status"]
+          cpf: string | null
+          created_at: string
+          data_cadastro: string
+          email: string | null
+          endereco: string | null
+          fracao: number
+          id: string
+          lote_id: string
+          nome: string
+          observacoes: string | null
+          responsavel_cadastro: string | null
+          situacao: string | null
+          telefone: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          apoia_asfalto?: boolean | null
+          assinatura_status?: Database["public"]["Enums"]["assinatura_status"]
+          cpf?: string | null
+          created_at?: string
+          data_cadastro?: string
+          email?: string | null
+          endereco?: string | null
+          fracao?: number
+          id?: string
+          lote_id: string
+          nome: string
+          observacoes?: string | null
+          responsavel_cadastro?: string | null
+          situacao?: string | null
+          telefone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          apoia_asfalto?: boolean | null
+          assinatura_status?: Database["public"]["Enums"]["assinatura_status"]
+          cpf?: string | null
+          created_at?: string
+          data_cadastro?: string
+          email?: string | null
+          endereco?: string | null
+          fracao?: number
+          id?: string
+          lote_id?: string
+          nome?: string
+          observacoes?: string | null
+          responsavel_cadastro?: string | null
+          situacao?: string | null
+          telefone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proprietarios_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "lotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quadras: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          observacoes: string | null
+          ordem: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          observacoes?: string | null
+          ordem?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          ordem?: number
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_staff: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "coordenador" | "visitante"
+      assinatura_status: "nao_contatado" | "contatado" | "confirmou" | "assinou"
+      lote_status:
+        | "sem_cadastro"
+        | "cadastrado"
+        | "incompleto"
+        | "confirmado"
+        | "pendencia"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +332,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "coordenador", "visitante"],
+      assinatura_status: ["nao_contatado", "contatado", "confirmou", "assinou"],
+      lote_status: [
+        "sem_cadastro",
+        "cadastrado",
+        "incompleto",
+        "confirmado",
+        "pendencia",
+      ],
+    },
   },
 } as const
