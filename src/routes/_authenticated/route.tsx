@@ -1,12 +1,6 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
+// Modo de teste: acesso aberto, sem exigência de cadastro/login.
 export const Route = createFileRoute("/_authenticated")({
-  beforeLoad: async () => {
-    if (typeof window === "undefined") return;
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) throw redirect({ to: "/auth" });
-    return { user: data.user };
-  },
   component: () => <Outlet />,
 });
