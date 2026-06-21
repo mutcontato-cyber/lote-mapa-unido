@@ -10,9 +10,9 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { to: "/mapa", label: "Mapa", icon: MapPin },
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/relatorios", label: "Relatórios", icon: FileText },
-  { to: "/admin", label: "Administração", icon: Settings, staffOnly: true },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
+  { to: "/relatorios", label: "Relatórios", icon: FileText, adminOnly: true },
+  { to: "/admin", label: "Administração", icon: Settings, adminOnly: true },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -26,7 +26,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     nav({ to: "/auth" });
   }
 
-  const visibleNav = NAV.filter((n) => !n.staffOnly || isStaff);
+  const visibleNav = NAV.filter((n) => !n.adminOnly || isAdmin);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

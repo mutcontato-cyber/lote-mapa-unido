@@ -18,11 +18,11 @@ import {
 import {
   signInWithPhonePassword,
   signUpWithPhonePassword,
-  requestPasswordReset,
 } from "@/lib/auth-helpers";
 import { supabase } from "@/integrations/supabase/client";
-import { MapPin, CheckCircle2 } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { TERMO_TITULO, TERMO_TEXTO, TERMO_CHECKBOX } from "@/lib/termo";
+import { ADMIN_WHATSAPP, ADMIN_NOME, waLink } from "@/lib/admin-config";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -44,13 +44,11 @@ function AuthPage() {
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [dataNascimento, setDataNascimento] = useState("");
   const [aceiteTermo, setAceiteTermo] = useState(false);
   const [showTermo, setShowTermo] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [resetSent, setResetSent] = useState(false);
-  const [resetPhone, setResetPhone] = useState("");
-  const [resetName, setResetName] = useState("");
 
   async function handleSignIn() {
     setErr(null);
@@ -72,6 +70,10 @@ function AuthPage() {
       setErr("Preencha nome, telefone e senha.");
       return;
     }
+    if (!dataNascimento) {
+      setErr("Informe sua data de nascimento.");
+      return;
+    }
     if (password.length < 6) {
       setErr("A senha precisa ter ao menos 6 caracteres.");
       return;
@@ -82,7 +84,7 @@ function AuthPage() {
     }
     setLoading(true);
     try {
-      await signUpWithPhonePassword(phone, name, password, TERMO_TEXTO);
+      await signUpWithPhonePassword(phone, name, password, TERMO_TEXTO, dataNascimento);
       navigate({ to: "/mapa" });
     } catch (e: any) {
       setErr(e?.message ?? "Falha ao criar conta.");
@@ -91,22 +93,8 @@ function AuthPage() {
     }
   }
 
-  async function handleReset() {
-    setErr(null);
-    if (!resetPhone.trim()) {
-      setErr("Informe o telefone usado no cadastro.");
-      return;
-    }
-    setLoading(true);
-    try {
-      await requestPasswordReset(resetPhone, resetName);
-      setResetSent(true);
-    } catch (e: any) {
-      setErr(e?.message ?? "Falha ao registrar pedido.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const recoveryMsg = `Olá ${ADMIN_NOME}, esqueci minha senha do app ADECAF Rua Digna. Meu nome: _____ / Telefone do cadastro: _____`;
+  const recoveryHref = waLink(ADMIN_WHATSAPP, recoveryMsg);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/30 p-4">
@@ -122,15 +110,26 @@ function AuthPage() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="in" className="w-full" onValueChange={() => setErr(null)}>
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="in">Entrar</TabsTrigger>
               <TabsTrigger value="up">Cadastrar</TabsTrigger>
-              <TabsTrigger value="rec">Esqueci</TabsTrigger>
             </TabsList>
 
             <TabsContent value="in" className="space-y-4 mt-4">
               <Field label="Telefone" value={phone} onChange={setPhone} placeholder="(00) 00000-0000" />
               <Field label="Senha" value={password} onChange={setPassword} placeholder="Sua senha" type="password" />
+              <p className="text-xs text-muted-foreground -mt-2">
+                Esqueceu a senha?{" "}
+                <a
+                  href={recoveryHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary underline font-medium"
+                >
+                  Fale com o administrador no WhatsApp
+                </a>{" "}
+                que ele gera uma nova para você.
+              </p>
               <Button className="w-full" disabled={loading} onClick={handleSignIn}>
                 {loading ? "Entrando…" : "Entrar"}
               </Button>
@@ -139,6 +138,12 @@ function AuthPage() {
             <TabsContent value="up" className="space-y-3 mt-4">
               <Field label="Nome completo" value={name} onChange={setName} placeholder="Maria Silva" />
               <Field label="Telefone / WhatsApp" value={phone} onChange={setPhone} placeholder="(62) 9 9999-9999" />
+              <Field
+                label="Data de nascimento"
+                value={dataNascimento}
+                onChange={setDataNascimento}
+                type="date"
+              />
               <Field label="Crie uma senha" value={password} onChange={setPassword} placeholder="Mínimo 6 caracteres" type="password" />
 
               <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3">
@@ -169,30 +174,6 @@ function AuthPage() {
               <p className="text-xs text-muted-foreground">
                 O primeiro usuário cadastrado se torna Administrador automaticamente.
               </p>
-            </TabsContent>
-
-            <TabsContent value="rec" className="space-y-3 mt-4">
-              {resetSent ? (
-                <Alert>
-                  <CheckCircle2 className="h-4 w-4" />
-                  <AlertDescription className="text-sm">
-                    Pedido enviado! O administrador da ADECAF vai gerar uma senha nova e enviar para você por
-                    WhatsApp em breve.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground">
-                    Informe seu telefone e nome. O administrador vai gerar uma senha nova e enviar para você por
-                    WhatsApp.
-                  </p>
-                  <Field label="Telefone do cadastro" value={resetPhone} onChange={setResetPhone} placeholder="(00) 00000-0000" />
-                  <Field label="Seu nome" value={resetName} onChange={setResetName} placeholder="Maria Silva" />
-                  <Button className="w-full" disabled={loading} onClick={handleReset}>
-                    {loading ? "Enviando…" : "Pedir nova senha"}
-                  </Button>
-                </>
-              )}
             </TabsContent>
           </Tabs>
           {err && (
