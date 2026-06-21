@@ -1,5 +1,7 @@
 // Configurações fixas da associação
 export const ADMIN_WHATSAPP = "5562981873363"; // Magno – Presidente ADECAF
+export const ADMIN_PHONE = "62981873363";
+export const ADMIN_EMAIL = "mutcontato@gmail.com";
 export const ADMIN_NOME = "Magno (Presidente ADECAF)";
 
 export function waLink(numero: string, mensagem: string) {

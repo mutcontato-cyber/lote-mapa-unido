@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { ADMIN_EMAIL, ADMIN_PHONE } from "@/lib/admin-config";
 
 // Sanitize phone -> digits only
 export function normalizePhone(phone: string) {
@@ -9,7 +10,9 @@ export function normalizePhone(phone: string) {
 // e-mail sintético (`{telefone}@adecaf.local`) só para usar a auth do
 // Supabase, mas a senha é a que o próprio morador escolheu.
 export function emailForPhone(phone: string) {
-  return `${normalizePhone(phone)}@adecaf.local`;
+  const normalized = normalizePhone(phone);
+  if (normalized === ADMIN_PHONE) return ADMIN_EMAIL;
+  return `${normalized}@adecaf.local`;
 }
 
 export async function signUpWithPhonePassword(
