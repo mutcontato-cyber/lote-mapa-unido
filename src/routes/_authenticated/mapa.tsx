@@ -92,28 +92,19 @@ function MapaPage() {
     return m;
   }, [lotes]);
 
-  const norteLayout: { quadra?: string; rua?: string }[] = [
-    { rua: "RUA 4" },
-    { quadra: "4" },
-    { rua: "RUA 5" },
-    { quadra: "5" },
-    { rua: "RUA 6" },
-    { quadra: "6" },
-    { rua: "RUA 7" },
-    { quadra: "7" },
-    { rua: "RUA 8" },
-    { quadra: "8" },
-  ];
-  const sulLayout: { quadra?: string; rua?: string; label?: string }[] = [
-    { label: "ÁREA VERDE" },
-    { rua: "RUA Tocantins" },
-    { quadra: "1" },
-    { rua: "RUA Paraíba" },
-    { quadra: "2" },
-    { rua: "RUA 2" },
-    { quadra: "3" },
-    { rua: "RUA 3" },
-  ];
+  // Ruas que cercam cada quadra (Norte / Sul / Oeste / Leste), conforme o mapa impresso
+  const STREETS: Record<string, { n: string; s: string; w: string; e: string }> = {
+    "1": { n: "RUA 1", s: "RUA 10", w: "RUA Tocantins", e: "RUA Paraíba" },
+    "2": { n: "RUA 1", s: "RUA 10", w: "RUA Paraíba", e: "RUA 2" },
+    "3": { n: "RUA 1", s: "RUA 10", w: "RUA 2", e: "RUA 3" },
+    "4": { n: "Av. Araguaia", s: "RUA 11", w: "RUA 4", e: "RUA 5" },
+    "5": { n: "Av. Araguaia", s: "RUA 11", w: "RUA 5", e: "RUA 6" },
+    "6": { n: "Av. Araguaia", s: "RUA 11", w: "RUA 6", e: "RUA 7" },
+    "7": { n: "Av. Araguaia", s: "RUA 11", w: "RUA 7", e: "RUA 8" },
+    "8": { n: "Av. Araguaia", s: "RUA 11", w: "RUA 8", e: "(extremo leste)" },
+  };
+  const ordemSetor1 = ["1", "2", "3"];
+  const ordemSetor2 = ["4", "5", "6", "7", "8"];
   const findQ = (nome: string) => quadras.find((q) => q.nome === nome);
 
   return (
@@ -166,17 +157,17 @@ function MapaPage() {
         )}
 
         {quadras.length > 0 && (
-          <div className="rounded-xl border bg-[oklch(0.95_0.04_140)] p-4 sm:p-6 overflow-x-auto">
-            <StreetBar label="AV. ARAGUAIA" emphasis />
-            <div className="flex items-stretch gap-0 justify-center min-w-max py-1">
-              {norteLayout.map((it, i) => {
-                if (it.rua) return <StreetVertical key={i} label={it.rua} />;
-                const qd = findQ(it.quadra!);
+          <div className="space-y-6">
+            <SectorHeader title="Setor Sul · Junto à Área Verde" subtitle="Quadras 1 a 3" />
+            <div className="space-y-5">
+              {ordemSetor1.map((nome) => {
+                const qd = findQ(nome);
                 if (!qd) return null;
                 return (
-                  <QuadraBlock
+                  <QuadraCard
                     key={qd.id}
                     quadra={qd}
+                    streets={STREETS[nome]}
                     lotes={lotesByQuadra.get(qd.id) ?? []}
                     isHighlighted={(l) => isHighlighted(l, qd)}
                     onLoteClick={setSelected}
@@ -184,34 +175,27 @@ function MapaPage() {
                 );
               })}
             </div>
-            <StreetBar label="RUA 11" />
 
-            <div className="my-3 text-center text-[10px] font-semibold tracking-wider text-muted-foreground italic">
-              ÁREA PÚBLICA MUNICIPAL
+            <div className="rounded-md border-2 border-dashed border-[oklch(0.55_0.15_140)] bg-[oklch(0.9_0.08_140)] py-4 text-center text-xs font-bold tracking-widest text-[oklch(0.3_0.1_140)]">
+              ▬▬▬ ÁREA PÚBLICA MUNICIPAL ▬▬▬
             </div>
 
-            <StreetBar label="RUA 1" />
-            <div className="flex items-stretch gap-0 justify-center min-w-max py-1">
-              {sulLayout.map((it, i) => {
-                if (it.label) return <AreaLabel key={i} label={it.label} />;
-                if (it.rua) return <StreetVertical key={i} label={it.rua} />;
-                const qd = findQ(it.quadra!);
+            <SectorHeader title="Setor Norte · Av. Araguaia" subtitle="Quadras 4 a 8" />
+            <div className="space-y-5">
+              {ordemSetor2.map((nome) => {
+                const qd = findQ(nome);
                 if (!qd) return null;
                 return (
-                  <QuadraBlock
+                  <QuadraCard
                     key={qd.id}
                     quadra={qd}
+                    streets={STREETS[nome]}
                     lotes={lotesByQuadra.get(qd.id) ?? []}
                     isHighlighted={(l) => isHighlighted(l, qd)}
                     onLoteClick={setSelected}
                   />
                 );
               })}
-            </div>
-            <StreetBar label="RUA 10" />
-
-            <div className="text-[10px] font-semibold tracking-wider text-muted-foreground mt-2 text-center italic">
-              SETOR ELIZIARIO
             </div>
           </div>
         )}
@@ -231,31 +215,79 @@ function MapaPage() {
   );
 }
 
-function QuadraBlock({
+function SectorHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="flex items-baseline justify-between border-b-2 border-primary/30 pb-2">
+      <h2 className="text-lg font-bold text-foreground">{title}</h2>
+      <span className="text-xs text-muted-foreground">{subtitle}</span>
+    </div>
+  );
+}
+
+function QuadraCard({
   quadra,
   lotes,
+  streets,
   isHighlighted,
   onLoteClick,
 }: {
   quadra: Quadra;
   lotes: Lote[];
+  streets: { n: string; s: string; w: string; e: string };
   isHighlighted: (l: Lote) => boolean;
   onLoteClick: (l: Lote) => void;
 }) {
-  // Two rows mimicking the printed layout: bottom row right→left, top row left→right
+  // Linha de cima: primeira metade (esq → dir). Linha de baixo: segunda metade (dir → esq).
   const half = Math.ceil(lotes.length / 2);
   const topRow = lotes.slice(0, half);
   const bottomRow = lotes.slice(half).reverse();
 
   return (
-    <div className="flex flex-col items-center gap-1 rounded-md border-2 border-[oklch(0.55_0.12_140)] bg-[oklch(0.92_0.05_140)] p-2 shrink-0">
-      <div className="flex flex-col gap-0.5">
-        <Row lotes={topRow} isHighlighted={isHighlighted} onClick={onLoteClick} />
-        <Row lotes={bottomRow} isHighlighted={isHighlighted} onClick={onLoteClick} />
+    <Card className="p-3 sm:p-4 overflow-x-auto">
+      <div className="flex items-center justify-between mb-2 px-1">
+        <div className="flex items-center gap-2">
+          <div className="text-sm font-bold rounded-full bg-primary text-primary-foreground w-9 h-9 flex items-center justify-center shadow">
+            {quadra.nome.padStart(2, "0")}
+          </div>
+          <div>
+            <div className="text-sm font-bold leading-tight">Quadra {quadra.nome}</div>
+            <div className="text-[11px] text-muted-foreground leading-tight">{lotes.length} lotes</div>
+          </div>
+        </div>
       </div>
-      <div className="text-[10px] font-bold rounded-full bg-white border-2 border-[oklch(0.45_0.12_140)] w-7 h-7 flex items-center justify-center mt-1">
-        {quadra.nome.padStart(2, "0")}
+
+      <div className="min-w-max">
+        <StreetLabel label={streets.n} direction="h" />
+        <div className="grid grid-cols-[auto_1fr_auto] items-stretch gap-0 my-1">
+          <StreetLabel label={streets.w} direction="v" />
+          <div className="flex flex-col gap-0.5 px-1 py-1 bg-[oklch(0.93_0.05_140)] border-y-2 border-[oklch(0.55_0.12_140)]">
+            <Row lotes={topRow} isHighlighted={isHighlighted} onClick={onLoteClick} />
+            <Row lotes={bottomRow} isHighlighted={isHighlighted} onClick={onLoteClick} />
+          </div>
+          <StreetLabel label={streets.e} direction="v" />
+        </div>
+        <StreetLabel label={streets.s} direction="h" />
       </div>
+    </Card>
+  );
+}
+
+function StreetLabel({ label, direction }: { label: string; direction: "h" | "v" }) {
+  if (direction === "h") {
+    return (
+      <div className="text-[10px] font-bold tracking-widest text-muted-foreground bg-white border border-dashed border-muted-foreground/40 py-1 px-2 text-center rounded-sm">
+        ▬ {label} ▬
+      </div>
+    );
+  }
+  return (
+    <div
+      className="flex items-center justify-center bg-white border border-dashed border-muted-foreground/40 px-1 mx-0 rounded-sm"
+      style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
+    >
+      <span className="text-[10px] font-bold tracking-widest text-muted-foreground whitespace-nowrap py-1">
+        {label}
+      </span>
     </div>
   );
 }
@@ -299,47 +331,6 @@ function Legend({ status, count }: { status: LoteStatus; count: number }) {
       />
       <span className="text-muted-foreground">{STATUS_LABEL[status]}</span>
       <span className="font-semibold">{count}</span>
-    </div>
-  );
-}
-
-function StreetBar({ label, emphasis }: { label: string; emphasis?: boolean }) {
-  return (
-    <div
-      className={cn(
-        "text-[11px] font-bold tracking-widest text-center py-1 my-1 rounded-sm border-y border-dashed",
-        emphasis
-          ? "bg-[oklch(0.85_0.13_60)] text-[oklch(0.25_0.08_60)] border-[oklch(0.55_0.15_60)]"
-          : "bg-white/60 text-muted-foreground border-muted-foreground/40",
-      )}
-    >
-      ▬ {label} ▬
-    </div>
-  );
-}
-
-function StreetVertical({ label }: { label: string }) {
-  return (
-    <div
-      className="flex items-center justify-center bg-white/70 border border-dashed border-muted-foreground/40 mx-0.5 px-1 rounded-sm"
-      style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
-    >
-      <span className="text-[10px] font-bold tracking-wider text-muted-foreground whitespace-nowrap py-1">
-        {label}
-      </span>
-    </div>
-  );
-}
-
-function AreaLabel({ label }: { label: string }) {
-  return (
-    <div
-      className="flex items-center justify-center bg-[oklch(0.88_0.1_140)] border-2 border-dashed border-[oklch(0.55_0.15_140)] mx-0.5 px-2 rounded-sm"
-      style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
-    >
-      <span className="text-[10px] font-bold tracking-wider text-[oklch(0.3_0.1_140)] whitespace-nowrap py-2">
-        {label}
-      </span>
     </div>
   );
 }
