@@ -92,28 +92,19 @@ function MapaPage() {
     return m;
   }, [lotes]);
 
-  const norteLayout: { quadra?: string; rua?: string }[] = [
-    { rua: "RUA 4" },
-    { quadra: "4" },
-    { rua: "RUA 5" },
-    { quadra: "5" },
-    { rua: "RUA 6" },
-    { quadra: "6" },
-    { rua: "RUA 7" },
-    { quadra: "7" },
-    { rua: "RUA 8" },
-    { quadra: "8" },
-  ];
-  const sulLayout: { quadra?: string; rua?: string; label?: string }[] = [
-    { label: "ÁREA VERDE" },
-    { rua: "RUA Tocantins" },
-    { quadra: "1" },
-    { rua: "RUA Paraíba" },
-    { quadra: "2" },
-    { rua: "RUA 2" },
-    { quadra: "3" },
-    { rua: "RUA 3" },
-  ];
+  // Ruas que cercam cada quadra (Norte / Sul / Oeste / Leste), conforme o mapa impresso
+  const STREETS: Record<string, { n: string; s: string; w: string; e: string }> = {
+    "1": { n: "RUA 1", s: "RUA 10", w: "RUA Tocantins", e: "RUA Paraíba" },
+    "2": { n: "RUA 1", s: "RUA 10", w: "RUA Paraíba", e: "RUA 2" },
+    "3": { n: "RUA 1", s: "RUA 10", w: "RUA 2", e: "RUA 3" },
+    "4": { n: "Av. Araguaia", s: "RUA 11", w: "RUA 4", e: "RUA 5" },
+    "5": { n: "Av. Araguaia", s: "RUA 11", w: "RUA 5", e: "RUA 6" },
+    "6": { n: "Av. Araguaia", s: "RUA 11", w: "RUA 6", e: "RUA 7" },
+    "7": { n: "Av. Araguaia", s: "RUA 11", w: "RUA 7", e: "RUA 8" },
+    "8": { n: "Av. Araguaia", s: "RUA 11", w: "RUA 8", e: "(extremo leste)" },
+  };
+  const ordemSetor1 = ["1", "2", "3"];
+  const ordemSetor2 = ["4", "5", "6", "7", "8"];
   const findQ = (nome: string) => quadras.find((q) => q.nome === nome);
 
   return (
@@ -166,17 +157,17 @@ function MapaPage() {
         )}
 
         {quadras.length > 0 && (
-          <div className="rounded-xl border bg-[oklch(0.95_0.04_140)] p-4 sm:p-6 overflow-x-auto">
-            <StreetBar label="AV. ARAGUAIA" emphasis />
-            <div className="flex items-stretch gap-0 justify-center min-w-max py-1">
-              {norteLayout.map((it, i) => {
-                if (it.rua) return <StreetVertical key={i} label={it.rua} />;
-                const qd = findQ(it.quadra!);
+          <div className="space-y-6">
+            <SectorHeader title="Setor Sul · Junto à Área Verde" subtitle="Quadras 1 a 3" />
+            <div className="space-y-5">
+              {ordemSetor1.map((nome) => {
+                const qd = findQ(nome);
                 if (!qd) return null;
                 return (
-                  <QuadraBlock
+                  <QuadraCard
                     key={qd.id}
                     quadra={qd}
+                    streets={STREETS[nome]}
                     lotes={lotesByQuadra.get(qd.id) ?? []}
                     isHighlighted={(l) => isHighlighted(l, qd)}
                     onLoteClick={setSelected}
@@ -184,34 +175,27 @@ function MapaPage() {
                 );
               })}
             </div>
-            <StreetBar label="RUA 11" />
 
-            <div className="my-3 text-center text-[10px] font-semibold tracking-wider text-muted-foreground italic">
-              ÁREA PÚBLICA MUNICIPAL
+            <div className="rounded-md border-2 border-dashed border-[oklch(0.55_0.15_140)] bg-[oklch(0.9_0.08_140)] py-4 text-center text-xs font-bold tracking-widest text-[oklch(0.3_0.1_140)]">
+              ▬▬▬ ÁREA PÚBLICA MUNICIPAL ▬▬▬
             </div>
 
-            <StreetBar label="RUA 1" />
-            <div className="flex items-stretch gap-0 justify-center min-w-max py-1">
-              {sulLayout.map((it, i) => {
-                if (it.label) return <AreaLabel key={i} label={it.label} />;
-                if (it.rua) return <StreetVertical key={i} label={it.rua} />;
-                const qd = findQ(it.quadra!);
+            <SectorHeader title="Setor Norte · Av. Araguaia" subtitle="Quadras 4 a 8" />
+            <div className="space-y-5">
+              {ordemSetor2.map((nome) => {
+                const qd = findQ(nome);
                 if (!qd) return null;
                 return (
-                  <QuadraBlock
+                  <QuadraCard
                     key={qd.id}
                     quadra={qd}
+                    streets={STREETS[nome]}
                     lotes={lotesByQuadra.get(qd.id) ?? []}
                     isHighlighted={(l) => isHighlighted(l, qd)}
                     onLoteClick={setSelected}
                   />
                 );
               })}
-            </div>
-            <StreetBar label="RUA 10" />
-
-            <div className="text-[10px] font-semibold tracking-wider text-muted-foreground mt-2 text-center italic">
-              SETOR ELIZIARIO
             </div>
           </div>
         )}
