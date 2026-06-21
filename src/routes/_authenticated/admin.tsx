@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchQuadras, fetchLotes, type Quadra, type Lote } from "@/lib/queries";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
-import { Trash2, Plus, KeyRound, MessageCircle, UserX } from "lucide-react";
+import { Trash2, Plus, KeyRound, MessageCircle, UserX, Download, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
@@ -30,6 +30,28 @@ interface PasswordReset {
   fulfilled_at: string | null;
 }
 
+interface CadastroRow {
+  id: string;
+  nome: string;
+  telefone: string | null;
+  whatsapp: string | null;
+  cpf: string | null;
+  email: string | null;
+  endereco: string | null;
+  data_nascimento: string | null;
+  chefe_casa: boolean | null;
+  qtd_moradores: number | null;
+  fracao: number;
+  apoia_asfalto: boolean | null;
+  assinatura_status: string;
+  situacao: string | null;
+  observacoes: string | null;
+  melhorias: any;
+  data_cadastro: string;
+  lote_numero: string;
+  quadra_nome: string;
+}
+
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Administração — ADECAF Rua Digna" }] }),
   component: AdminPage,
@@ -43,6 +65,7 @@ function AdminPage() {
   const [qtdLotes, setQtdLotes] = useState(20);
   const [users, setUsers] = useState<{ id: string; full_name: string; phone: string; roles: AppRole[] }[]>([]);
   const [resets, setResets] = useState<PasswordReset[]>([]);
+  const [cadastros, setCadastros] = useState<CadastroRow[]>([]);
 
   const generateResetFn = useServerFn(generatePasswordReset);
   const deleteMoradorFn = useServerFn(deleteMorador);
@@ -67,6 +90,33 @@ function AdminPage() {
         .select("*")
         .order("requested_at", { ascending: false });
       setResets((rs as PasswordReset[]) ?? []);
+
+      const { data: props } = await supabase
+        .from("proprietarios")
+        .select("*, lotes(numero, quadras(nome))")
+        .order("data_cadastro", { ascending: false });
+      const rows: CadastroRow[] = (props ?? []).map((p: any) => ({
+        id: p.id,
+        nome: p.nome,
+        telefone: p.telefone,
+        whatsapp: p.whatsapp,
+        cpf: p.cpf,
+        email: p.email,
+        endereco: p.endereco,
+        data_nascimento: p.data_nascimento,
+        chefe_casa: p.chefe_casa,
+        qtd_moradores: p.qtd_moradores,
+        fracao: Number(p.fracao),
+        apoia_asfalto: p.apoia_asfalto,
+        assinatura_status: p.assinatura_status,
+        situacao: p.situacao,
+        observacoes: p.observacoes,
+        melhorias: p.melhorias,
+        data_cadastro: p.data_cadastro,
+        lote_numero: p.lotes?.numero ?? "",
+        quadra_nome: p.lotes?.quadras?.nome ?? "",
+      }));
+      setCadastros(rows);
     }
   }
 
