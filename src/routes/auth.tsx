@@ -20,9 +20,10 @@ import {
   signUpWithPhonePassword,
 } from "@/lib/auth-helpers";
 import { supabase } from "@/integrations/supabase/client";
-import { MapPin } from "lucide-react";
 import { TERMO_TITULO, TERMO_TEXTO, TERMO_CHECKBOX } from "@/lib/termo";
 import { ADMIN_WHATSAPP, ADMIN_NOME, waLink } from "@/lib/admin-config";
+import { AdecafLogo } from "@/components/logo";
+import { traduzirErro } from "@/lib/translate-error";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -58,7 +59,7 @@ function AuthPage() {
       await signInWithPhonePassword(phone, password);
       navigate({ to: "/mapa" });
     } catch (e: any) {
-      setErr(e?.message ?? "Falha ao entrar.");
+      setErr(traduzirErro(e));
     } finally {
       setLoading(false);
     }
@@ -87,7 +88,7 @@ function AuthPage() {
       await signUpWithPhonePassword(phone, name, password, TERMO_TEXTO, dataNascimento);
       navigate({ to: "/mapa" });
     } catch (e: any) {
-      setErr(e?.message ?? "Falha ao criar conta.");
+      setErr(traduzirErro(e));
     } finally {
       setLoading(false);
     }
@@ -100,9 +101,7 @@ function AuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/30 p-4">
       <Card className="w-full max-w-md shadow-xl border-primary/20">
         <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
-            <MapPin className="h-7 w-7" />
-          </div>
+          <AdecafLogo className="mx-auto h-20 w-auto" />
           <CardTitle className="text-2xl">ADECAF Rua Digna</CardTitle>
           <CardDescription>
             Plataforma da Associação de Moradores para o abaixo-assinado pelo asfaltamento.
