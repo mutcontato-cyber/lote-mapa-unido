@@ -190,6 +190,16 @@ function AuthPage() {
                 >
                   Entrar
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErr(null);
+                    setMode("signin");
+                  }}
+                  className="text-[11px] text-muted-foreground/60 hover:text-foreground underline-offset-2 hover:underline mt-1"
+                >
+                  acesso admin
+                </button>
               </div>
             </div>
           )}
@@ -200,20 +210,6 @@ function AuthPage() {
           )}
         </CardContent>
       </Card>
-
-      {mode === "signup" && (
-        <button
-          type="button"
-          onClick={() => {
-            setErr(null);
-            setMode("signin");
-          }}
-          className="fixed bottom-3 right-3 text-[10px] text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-          aria-label="Acesso administrador"
-        >
-          admin
-        </button>
-      )}
 
       <Dialog open={showTermo} onOpenChange={setShowTermo}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
