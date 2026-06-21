@@ -118,6 +118,22 @@ function MapaPage() {
           </div>
         </Card>
 
+        <Card className="p-5 bg-gradient-to-r from-primary/10 via-accent/30 to-primary/10 border-primary/30">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h3 className="font-semibold text-base">Sua rua merece asfalto. Sua assinatura faz a diferença!</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Encontre seu lote no mapa, clique nele e cadastre-se. Quanto mais vizinhos
+                participarem, mais força nosso abaixo-assinado terá junto à Prefeitura.
+              </p>
+            </div>
+            <div className="text-sm text-muted-foreground md:text-right">
+              <div><strong className="text-foreground">{totals.confirmado + totals.cadastrado}</strong> de {lotes.length} lotes já apoiam</div>
+              <div className="text-xs">Faltam {totals.sem_cadastro} para o 100%</div>
+            </div>
+          </div>
+        </Card>
+
         {quadras.length === 0 && (
           <Card className="p-8 text-center text-muted-foreground">
             Nenhuma quadra cadastrada ainda. Vá em <strong>Administração</strong> para criar quadras e lotes.
