@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Info, CheckCircle2, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -12,6 +13,27 @@ import type { Lote, Quadra, Proprietario } from "@/lib/queries";
 import { recomputeLoteStatus } from "@/lib/queries";
 import { useAuth } from "@/hooks/use-auth";
 import { ADMIN_WHATSAPP, ADMIN_NOME, waLink } from "@/lib/admin-config";
+
+const MELHORIAS_OPCOES: { key: string; label: string }[] = [
+  { key: "asfalto", label: "Asfalto" },
+  { key: "esgoto", label: "Esgoto" },
+  { key: "agua", label: "Água encanada" },
+  { key: "correios", label: "Correios / entrega" },
+  { key: "transporte_escolar", label: "Transporte escolar" },
+  { key: "coleta_lixo", label: "Coleta de lixo" },
+  { key: "molhar_ruas", label: "Molhar as ruas (poeira)" },
+];
+
+function calcularIdade(iso: string): number | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - d.getFullYear();
+  const m = hoje.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && hoje.getDate() < d.getDate())) idade--;
+  return idade >= 0 && idade < 130 ? idade : null;
+}
 
 interface Props {
   lote: Lote;
@@ -26,6 +48,10 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
   const { profile, user, isStaff } = useAuth();
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
+  const [dataNascimento, setDataNascimento] = useState("");
+  const [chefeCasa, setChefeCasa] = useState(false);
+  const [qtdMoradores, setQtdMoradores] = useState<string>("");
+  const [melhorias, setMelhorias] = useState<Record<string, "sim" | "nao" | null>>({});
   const [tipoLote, setTipoLote] = useState<"inteiro" | "meio">("inteiro");
   const [loading, setLoading] = useState(false);
   const [confirmado, setConfirmado] = useState<{ mensagem: string } | null>(null);
@@ -35,12 +61,18 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
     if (open && profile) {
       setNome(profile.full_name || "");
       setTelefone(profile.phone || "");
+      setDataNascimento((profile as any).data_nascimento || "");
       setConfirmado(null);
+      setChefeCasa(false);
+      setQtdMoradores("");
+      setMelhorias({});
     }
     if (!open) {
       setConfirmado(null);
     }
   }, [open, profile]);
+  const idade = calcularIdade(dataNascimento);
+
 
   // Quanto já está ocupado neste lote
   const fracaoOcupada = proprietarios.reduce((s, p) => s + Number(p.fracao || 0), 0);
@@ -85,6 +117,10 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
         situacao,
         apoia_asfalto: true,
         assinatura_status: "confirmou",
+        data_nascimento: dataNascimento || null,
+        chefe_casa: chefeCasa,
+        qtd_moradores: qtdMoradores ? Number(qtdMoradores) : null,
+        melhorias,
       });
       if (insErr) throw insErr;
 
@@ -92,11 +128,25 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
       await recomputeLoteStatus(lote.id);
 
       // Mensagem para o morador enviar pro admin
+      const linhasMelhorias = MELHORIAS_OPCOES
+        .map((m) => {
+          const v = melhorias[m.key];
+          if (!v) return null;
+          return `• ${m.label}: ${v === "sim" ? "Precisa" : "Não precisa"}`;
+        })
+        .filter(Boolean)
+        .join("\n");
+
       const mensagem =
         `Olá ${ADMIN_NOME.split(" ")[0]}, sou ${nome.trim()} e estou apoiando o asfaltamento da ADECAF Rua Digna.\n\n` +
         `📍 Quadra ${quadra.nome} · Lote ${lote.numero}` +
         (tipoLote === "meio" ? " (meio lote)" : " (lote inteiro)") +
-        `\n📞 Meu contato: ${telefone.trim()}\n\nLi e concordo com o termo de autorização da ADECAF.`;
+        `\n📞 Meu contato: ${telefone.trim()}` +
+        (idade !== null ? `\n🎂 Idade: ${idade} anos` : "") +
+        (chefeCasa ? `\n👤 Sou chefe da casa` : "") +
+        (qtdMoradores ? `\n🏠 Moradores na casa: ${qtdMoradores}` : "") +
+        (linhasMelhorias ? `\n\n📋 Melhorias necessárias na rua:\n${linhasMelhorias}` : "") +
+        `\n\nLi e concordo com o termo de autorização da ADECAF.`;
 
       setConfirmado({ mensagem });
       onSaved?.();
