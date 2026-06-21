@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchQuadras, fetchLotes, type Quadra, type Lote } from "@/lib/queries";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
-import { Trash2, Plus, KeyRound, MessageCircle, UserX } from "lucide-react";
+import { Trash2, Plus, KeyRound, MessageCircle, UserX, Download, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
@@ -30,6 +30,28 @@ interface PasswordReset {
   fulfilled_at: string | null;
 }
 
+interface CadastroRow {
+  id: string;
+  nome: string;
+  telefone: string | null;
+  whatsapp: string | null;
+  cpf: string | null;
+  email: string | null;
+  endereco: string | null;
+  data_nascimento: string | null;
+  chefe_casa: boolean | null;
+  qtd_moradores: number | null;
+  fracao: number;
+  apoia_asfalto: boolean | null;
+  assinatura_status: string;
+  situacao: string | null;
+  observacoes: string | null;
+  melhorias: any;
+  data_cadastro: string;
+  lote_numero: string;
+  quadra_nome: string;
+}
+
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Administração — ADECAF Rua Digna" }] }),
   component: AdminPage,
@@ -43,6 +65,7 @@ function AdminPage() {
   const [qtdLotes, setQtdLotes] = useState(20);
   const [users, setUsers] = useState<{ id: string; full_name: string; phone: string; roles: AppRole[] }[]>([]);
   const [resets, setResets] = useState<PasswordReset[]>([]);
+  const [cadastros, setCadastros] = useState<CadastroRow[]>([]);
 
   const generateResetFn = useServerFn(generatePasswordReset);
   const deleteMoradorFn = useServerFn(deleteMorador);
@@ -67,6 +90,33 @@ function AdminPage() {
         .select("*")
         .order("requested_at", { ascending: false });
       setResets((rs as PasswordReset[]) ?? []);
+
+      const { data: props } = await supabase
+        .from("proprietarios")
+        .select("*, lotes(numero, quadras(nome))")
+        .order("data_cadastro", { ascending: false });
+      const rows: CadastroRow[] = (props ?? []).map((p: any) => ({
+        id: p.id,
+        nome: p.nome,
+        telefone: p.telefone,
+        whatsapp: p.whatsapp,
+        cpf: p.cpf,
+        email: p.email,
+        endereco: p.endereco,
+        data_nascimento: p.data_nascimento,
+        chefe_casa: p.chefe_casa,
+        qtd_moradores: p.qtd_moradores,
+        fracao: Number(p.fracao),
+        apoia_asfalto: p.apoia_asfalto,
+        assinatura_status: p.assinatura_status,
+        situacao: p.situacao,
+        observacoes: p.observacoes,
+        melhorias: p.melhorias,
+        data_cadastro: p.data_cadastro,
+        lote_numero: p.lotes?.numero ?? "",
+        quadra_nome: p.lotes?.quadras?.nome ?? "",
+      }));
+      setCadastros(rows);
     }
   }
 
@@ -148,6 +198,77 @@ function AdminPage() {
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao excluir");
     }
+  }
+
+  function formatMelhorias(m: any): string {
+    if (!m || typeof m !== "object") return "";
+    return Object.entries(m)
+      .filter(([, v]) => v === "sim" || v === "nao")
+      .map(([k, v]) => `${k}:${v}`)
+      .join("; ");
+  }
+
+  function rowToObject(r: CadastroRow) {
+    return {
+      Nome: r.nome,
+      Telefone: r.telefone ?? "",
+      WhatsApp: r.whatsapp ?? "",
+      CPF: r.cpf ?? "",
+      Email: r.email ?? "",
+      Endereco: r.endereco ?? "",
+      DataNascimento: r.data_nascimento ?? "",
+      ChefeCasa: r.chefe_casa ? "Sim" : r.chefe_casa === false ? "Nao" : "",
+      QtdMoradores: r.qtd_moradores ?? "",
+      Quadra: r.quadra_nome,
+      Lote: r.lote_numero,
+      Fracao: r.fracao,
+      ApoiaAsfalto: r.apoia_asfalto ? "Sim" : r.apoia_asfalto === false ? "Nao" : "",
+      AssinaturaStatus: r.assinatura_status,
+      Situacao: r.situacao ?? "",
+      Melhorias: formatMelhorias(r.melhorias),
+      Observacoes: r.observacoes ?? "",
+      DataCadastro: new Date(r.data_cadastro).toLocaleString("pt-BR"),
+    };
+  }
+
+  function toCSV(rows: Record<string, any>[]): string {
+    if (!rows.length) return "";
+    const headers = Object.keys(rows[0]);
+    const escape = (v: any) => {
+      const s = String(v ?? "");
+      return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const lines = [headers.join(";")];
+    for (const r of rows) lines.push(headers.map((h) => escape(r[h])).join(";"));
+    return "\ufeff" + lines.join("\n");
+  }
+
+  function downloadFile(filename: string, content: string, mime = "text/csv;charset=utf-8") {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function baixarUm(r: CadastroRow) {
+    const csv = toCSV([rowToObject(r)]);
+    const safe = r.nome.replace(/[^\w\d-]+/g, "_");
+    downloadFile(`cadastro-${safe}.csv`, csv);
+  }
+
+  function baixarTodos() {
+    if (!cadastros.length) {
+      toast.error("Nenhum cadastro para baixar");
+      return;
+    }
+    const csv = toCSV(cadastros.map(rowToObject));
+    const data = new Date().toISOString().slice(0, 10);
+    downloadFile(`cadastros-adecaf-${data}.csv`, csv);
   }
 
   if (!isStaff) {
@@ -233,6 +354,81 @@ function AdminPage() {
               )}
               <p className="text-xs text-muted-foreground mt-3">
                 Ao clicar em <strong>Gerar senha</strong>, o sistema cria uma senha aleatória, atualiza o cadastro do morador e abre o WhatsApp para você enviar a senha.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {isAdmin && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="flex items-center gap-2">
+                  <FileSpreadsheet className="h-5 w-5 text-primary" />
+                  Cadastros enviados
+                  <Badge variant="secondary">{cadastros.length}</Badge>
+                </span>
+                <Button size="sm" onClick={baixarTodos} disabled={!cadastros.length}>
+                  <Download className="h-4 w-4 mr-1" />
+                  Baixar todos (CSV)
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {cadastros.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum cadastro recebido ainda.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Telefone</TableHead>
+                        <TableHead>Quadra / Lote</TableHead>
+                        <TableHead>Apoia</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {cadastros.map((c) => (
+                        <TableRow key={c.id}>
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(c.data_cadastro).toLocaleDateString("pt-BR")}
+                          </TableCell>
+                          <TableCell className="font-medium">{c.nome}</TableCell>
+                          <TableCell className="whitespace-nowrap">{c.telefone ?? "—"}</TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {c.quadra_nome} / {c.lote_numero}
+                            {c.fracao < 1 && (
+                              <Badge variant="outline" className="ml-2">
+                                {Math.round(c.fracao * 100)}%
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {c.apoia_asfalto === true ? (
+                              <Badge className="bg-green-600">Sim</Badge>
+                            ) : c.apoia_asfalto === false ? (
+                              <Badge variant="destructive">Não</Badge>
+                            ) : (
+                              <Badge variant="outline">—</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button size="sm" variant="outline" onClick={() => baixarUm(c)}>
+                              <Download className="h-3.5 w-3.5 mr-1" />
+                              Baixar
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground mt-3">
+                Os cadastros são gravados automaticamente assim que o morador confirma o lote. Os arquivos CSV podem ser abertos no Excel ou Google Planilhas.
               </p>
             </CardContent>
           </Card>

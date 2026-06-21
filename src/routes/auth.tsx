@@ -50,6 +50,7 @@ function AuthPage() {
   const [showTermo, setShowTermo] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [mode, setMode] = useState<"signup" | "signin">("signup");
 
   async function handleSignIn() {
     setErr(null);
@@ -108,13 +109,8 @@ function AuthPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="in" className="w-full" onValueChange={() => setErr(null)}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="in">Entrar</TabsTrigger>
-              <TabsTrigger value="up">Cadastrar</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="in" className="space-y-4 mt-4">
+          {mode === "signin" ? (
+            <div className="space-y-4 mt-2">
               <Field label="Telefone" value={phone} onChange={setPhone} placeholder="(00) 00000-0000" />
               <Field label="Senha" value={password} onChange={setPassword} placeholder="Sua senha" type="password" />
               <p className="text-xs text-muted-foreground -mt-2">
@@ -132,9 +128,19 @@ function AuthPage() {
               <Button className="w-full" disabled={loading} onClick={handleSignIn}>
                 {loading ? "Entrando…" : "Entrar"}
               </Button>
-            </TabsContent>
-
-            <TabsContent value="up" className="space-y-3 mt-4">
+              <button
+                type="button"
+                className="block w-full text-center text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                onClick={() => {
+                  setErr(null);
+                  setMode("signup");
+                }}
+              >
+                ← Voltar para o cadastro
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3 mt-2">
               <Field label="Nome completo" value={name} onChange={setName} placeholder="Maria Silva" />
               <Field label="Telefone / WhatsApp" value={phone} onChange={setPhone} placeholder="(62) 9 9999-9999" />
               <Field
@@ -170,11 +176,18 @@ function AuthPage() {
               <Button className="w-full" disabled={loading} onClick={handleSignUp}>
                 {loading ? "Criando conta…" : "Criar conta"}
               </Button>
-              <p className="text-xs text-muted-foreground">
-                O primeiro usuário cadastrado se torna Administrador automaticamente.
-              </p>
-            </TabsContent>
-          </Tabs>
+              <button
+                type="button"
+                className="block w-full text-center text-[11px] text-muted-foreground/70 hover:text-foreground mt-2"
+                onClick={() => {
+                  setErr(null);
+                  setMode("signin");
+                }}
+              >
+                Já tenho cadastro
+              </button>
+            </div>
+          )}
           {err && (
             <Alert variant="destructive" className="mt-4">
               <AlertDescription>{err}</AlertDescription>
