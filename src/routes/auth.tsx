@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MapPin } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Entrar — ADECAF Rua Digna" },
