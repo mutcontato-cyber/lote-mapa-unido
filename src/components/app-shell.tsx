@@ -9,7 +9,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/", label: "Mapa", icon: MapPin },
+  { to: "/mapa", label: "Mapa", icon: MapPin },
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/relatorios", label: "Relatórios", icon: FileText },
   { to: "/admin", label: "Administração", icon: Settings, staffOnly: true },
