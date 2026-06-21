@@ -92,10 +92,29 @@ function MapaPage() {
     return m;
   }, [lotes]);
 
-  const norteNomes = ["4", "5", "6", "7", "8"];
-  const sulNomes = ["1", "2", "3"];
-  const norte = norteNomes.map((n) => quadras.find((q) => q.nome === n)).filter(Boolean) as Quadra[];
-  const sul = sulNomes.map((n) => quadras.find((q) => q.nome === n)).filter(Boolean) as Quadra[];
+  const norteLayout: { quadra?: string; rua?: string }[] = [
+    { rua: "RUA 4" },
+    { quadra: "4" },
+    { rua: "RUA 5" },
+    { quadra: "5" },
+    { rua: "RUA 6" },
+    { quadra: "6" },
+    { rua: "RUA 7" },
+    { quadra: "7" },
+    { rua: "RUA 8" },
+    { quadra: "8" },
+  ];
+  const sulLayout: { quadra?: string; rua?: string; label?: string }[] = [
+    { label: "ÁREA VERDE" },
+    { rua: "RUA Tocantins" },
+    { quadra: "1" },
+    { rua: "RUA Paraíba" },
+    { quadra: "2" },
+    { rua: "RUA 2" },
+    { quadra: "3" },
+    { rua: "RUA 3" },
+  ];
+  const findQ = (nome: string) => quadras.find((q) => q.nome === nome);
 
   return (
     <AppShell>
@@ -148,42 +167,51 @@ function MapaPage() {
 
         {quadras.length > 0 && (
           <div className="rounded-xl border bg-[oklch(0.95_0.04_140)] p-4 sm:p-6 overflow-x-auto">
-            <div className="text-xs font-bold tracking-wider text-muted-foreground mb-2 text-center">
-              ▲ AV. ARAGUAIA (NORTE)
+            <StreetBar label="AV. ARAGUAIA" emphasis />
+            <div className="flex items-stretch gap-0 justify-center min-w-max py-1">
+              {norteLayout.map((it, i) => {
+                if (it.rua) return <StreetVertical key={i} label={it.rua} />;
+                const qd = findQ(it.quadra!);
+                if (!qd) return null;
+                return (
+                  <QuadraBlock
+                    key={qd.id}
+                    quadra={qd}
+                    lotes={lotesByQuadra.get(qd.id) ?? []}
+                    isHighlighted={(l) => isHighlighted(l, qd)}
+                    onLoteClick={setSelected}
+                  />
+                );
+              })}
             </div>
-            <div className="flex gap-3 justify-center min-w-max pb-2">
-              {norte.map((qd) => (
-                <QuadraBlock
-                  key={qd.id}
-                  quadra={qd}
-                  lotes={lotesByQuadra.get(qd.id) ?? []}
-                  isHighlighted={(l) => isHighlighted(l, qd)}
-                  onLoteClick={setSelected}
-                />
-              ))}
+            <StreetBar label="RUA 11" />
+
+            <div className="my-3 text-center text-[10px] font-semibold tracking-wider text-muted-foreground italic">
+              ÁREA PÚBLICA MUNICIPAL
             </div>
 
-            <div className="my-4 text-center text-xs font-bold tracking-wider text-muted-foreground border-y border-dashed py-1">
-              ◀ RUAS INTERNAS ▶
+            <StreetBar label="RUA 1" />
+            <div className="flex items-stretch gap-0 justify-center min-w-max py-1">
+              {sulLayout.map((it, i) => {
+                if (it.label) return <AreaLabel key={i} label={it.label} />;
+                if (it.rua) return <StreetVertical key={i} label={it.rua} />;
+                const qd = findQ(it.quadra!);
+                if (!qd) return null;
+                return (
+                  <QuadraBlock
+                    key={qd.id}
+                    quadra={qd}
+                    lotes={lotesByQuadra.get(qd.id) ?? []}
+                    isHighlighted={(l) => isHighlighted(l, qd)}
+                    onLoteClick={setSelected}
+                  />
+                );
+              })}
             </div>
+            <StreetBar label="RUA 10" />
 
-            <div className="flex gap-3 justify-center min-w-max pb-2">
-              <div className="flex flex-col items-center justify-center text-xs font-bold text-[oklch(0.45_0.12_140)] writing-vertical px-2" style={{ writingMode: "vertical-rl" }}>
-                ÁREA VERDE
-              </div>
-              {sul.map((qd) => (
-                <QuadraBlock
-                  key={qd.id}
-                  quadra={qd}
-                  lotes={lotesByQuadra.get(qd.id) ?? []}
-                  isHighlighted={(l) => isHighlighted(l, qd)}
-                  onLoteClick={setSelected}
-                />
-              ))}
-            </div>
-
-            <div className="text-xs font-bold tracking-wider text-muted-foreground mt-2 text-center">
-              ▼ SETOR ELIZIARIO (SUL)
+            <div className="text-[10px] font-semibold tracking-wider text-muted-foreground mt-2 text-center italic">
+              SETOR ELIZIARIO
             </div>
           </div>
         )}
