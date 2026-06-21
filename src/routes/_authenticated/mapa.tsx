@@ -302,3 +302,44 @@ function Legend({ status, count }: { status: LoteStatus; count: number }) {
     </div>
   );
 }
+
+function StreetBar({ label, emphasis }: { label: string; emphasis?: boolean }) {
+  return (
+    <div
+      className={cn(
+        "text-[11px] font-bold tracking-widest text-center py-1 my-1 rounded-sm border-y border-dashed",
+        emphasis
+          ? "bg-[oklch(0.85_0.13_60)] text-[oklch(0.25_0.08_60)] border-[oklch(0.55_0.15_60)]"
+          : "bg-white/60 text-muted-foreground border-muted-foreground/40",
+      )}
+    >
+      ▬ {label} ▬
+    </div>
+  );
+}
+
+function StreetVertical({ label }: { label: string }) {
+  return (
+    <div
+      className="flex items-center justify-center bg-white/70 border border-dashed border-muted-foreground/40 mx-0.5 px-1 rounded-sm"
+      style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
+    >
+      <span className="text-[10px] font-bold tracking-wider text-muted-foreground whitespace-nowrap py-1">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function AreaLabel({ label }: { label: string }) {
+  return (
+    <div
+      className="flex items-center justify-center bg-[oklch(0.88_0.1_140)] border-2 border-dashed border-[oklch(0.55_0.15_140)] mx-0.5 px-2 rounded-sm"
+      style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
+    >
+      <span className="text-[10px] font-bold tracking-wider text-[oklch(0.3_0.1_140)] whitespace-nowrap py-2">
+        {label}
+      </span>
+    </div>
+  );
+}
