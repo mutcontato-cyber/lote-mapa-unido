@@ -5,6 +5,7 @@ import { signOut } from "@/lib/auth-helpers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LayoutDashboard, MapPin, FileText, LogOut, Settings, Menu } from "lucide-react";
+import { AdecafLogo } from "@/components/logo";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -35,15 +36,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setOpen((v) => !v)}>
             <Menu className="h-5 w-5" />
           </Button>
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shadow">
-              <MapPin className="h-5 w-5" />
-            </div>
+          <Link to="/mapa" className="flex items-center gap-2">
+            <AdecafLogo className="h-10 w-10" />
             <div className="leading-tight">
               <div className="font-semibold">ADECAF</div>
               <div className="text-xs text-muted-foreground -mt-0.5">Rua Digna</div>
             </div>
-          </div>
+          </Link>
           <nav className="hidden md:flex items-center gap-1 ml-6">
             {visibleNav.map((n) => {
               const active = path === n.to || (n.to !== "/" && path.startsWith(n.to));
