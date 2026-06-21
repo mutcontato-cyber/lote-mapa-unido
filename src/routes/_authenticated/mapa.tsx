@@ -240,7 +240,7 @@ function QuadraCard({
   // Linha de cima: primeira metade (esq → dir). Linha de baixo: segunda metade (dir → esq).
   const half = Math.ceil(lotes.length / 2);
   const topRow = lotes.slice(0, half);
-  const bottomRow = lotes.slice(half).reverse();
+  const bottomRow = lotes.slice(half);
 
   return (
     <Card className="p-3 sm:p-4 overflow-x-auto">
