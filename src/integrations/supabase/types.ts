@@ -52,20 +52,62 @@ export type Database = {
           },
         ]
       }
+      password_resets: {
+        Row: {
+          fulfilled_at: string | null
+          fulfilled_by: string | null
+          full_name: string | null
+          id: string
+          nova_senha: string | null
+          phone: string
+          requested_at: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          fulfilled_at?: string | null
+          fulfilled_by?: string | null
+          full_name?: string | null
+          id?: string
+          nova_senha?: string | null
+          phone: string
+          requested_at?: string
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          fulfilled_at?: string | null
+          fulfilled_by?: string | null
+          full_name?: string | null
+          id?: string
+          nova_senha?: string | null
+          phone?: string
+          requested_at?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          aceite_termo_at: string | null
+          aceite_termo_texto: string | null
           created_at: string
           full_name: string
           id: string
           phone: string
         }
         Insert: {
+          aceite_termo_at?: string | null
+          aceite_termo_texto?: string | null
           created_at?: string
           full_name: string
           id: string
           phone: string
         }
         Update: {
+          aceite_termo_at?: string | null
+          aceite_termo_texto?: string | null
           created_at?: string
           full_name?: string
           id?: string
