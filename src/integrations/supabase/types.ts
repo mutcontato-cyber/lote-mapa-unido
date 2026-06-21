@@ -122,16 +122,20 @@ export type Database = {
         Row: {
           apoia_asfalto: boolean | null
           assinatura_status: Database["public"]["Enums"]["assinatura_status"]
+          chefe_casa: boolean | null
           cpf: string | null
           created_at: string
           data_cadastro: string
+          data_nascimento: string | null
           email: string | null
           endereco: string | null
           fracao: number
           id: string
           lote_id: string
+          melhorias: Json | null
           nome: string
           observacoes: string | null
+          qtd_moradores: number | null
           responsavel_cadastro: string | null
           situacao: string | null
           telefone: string | null
@@ -141,16 +145,20 @@ export type Database = {
         Insert: {
           apoia_asfalto?: boolean | null
           assinatura_status?: Database["public"]["Enums"]["assinatura_status"]
+          chefe_casa?: boolean | null
           cpf?: string | null
           created_at?: string
           data_cadastro?: string
+          data_nascimento?: string | null
           email?: string | null
           endereco?: string | null
           fracao?: number
           id?: string
           lote_id: string
+          melhorias?: Json | null
           nome: string
           observacoes?: string | null
+          qtd_moradores?: number | null
           responsavel_cadastro?: string | null
           situacao?: string | null
           telefone?: string | null
@@ -160,16 +168,20 @@ export type Database = {
         Update: {
           apoia_asfalto?: boolean | null
           assinatura_status?: Database["public"]["Enums"]["assinatura_status"]
+          chefe_casa?: boolean | null
           cpf?: string | null
           created_at?: string
           data_cadastro?: string
+          data_nascimento?: string | null
           email?: string | null
           endereco?: string | null
           fracao?: number
           id?: string
           lote_id?: string
+          melhorias?: Json | null
           nome?: string
           observacoes?: string | null
+          qtd_moradores?: number | null
           responsavel_cadastro?: string | null
           situacao?: string | null
           telefone?: string | null

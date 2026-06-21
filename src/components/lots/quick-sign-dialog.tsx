@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Info, CheckCircle2, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -12,6 +13,27 @@ import type { Lote, Quadra, Proprietario } from "@/lib/queries";
 import { recomputeLoteStatus } from "@/lib/queries";
 import { useAuth } from "@/hooks/use-auth";
 import { ADMIN_WHATSAPP, ADMIN_NOME, waLink } from "@/lib/admin-config";
+
+const MELHORIAS_OPCOES: { key: string; label: string }[] = [
+  { key: "asfalto", label: "Asfalto" },
+  { key: "esgoto", label: "Esgoto" },
+  { key: "agua", label: "Água encanada" },
+  { key: "correios", label: "Correios / entrega" },
+  { key: "transporte_escolar", label: "Transporte escolar" },
+  { key: "coleta_lixo", label: "Coleta de lixo" },
+  { key: "molhar_ruas", label: "Molhar as ruas (poeira)" },
+];
+
+function calcularIdade(iso: string): number | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - d.getFullYear();
+  const m = hoje.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && hoje.getDate() < d.getDate())) idade--;
+  return idade >= 0 && idade < 130 ? idade : null;
+}
 
 interface Props {
   lote: Lote;
@@ -26,6 +48,10 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
   const { profile, user, isStaff } = useAuth();
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
+  const [dataNascimento, setDataNascimento] = useState("");
+  const [chefeCasa, setChefeCasa] = useState(false);
+  const [qtdMoradores, setQtdMoradores] = useState<string>("");
+  const [melhorias, setMelhorias] = useState<Record<string, "sim" | "nao" | null>>({});
   const [tipoLote, setTipoLote] = useState<"inteiro" | "meio">("inteiro");
   const [loading, setLoading] = useState(false);
   const [confirmado, setConfirmado] = useState<{ mensagem: string } | null>(null);
@@ -35,12 +61,18 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
     if (open && profile) {
       setNome(profile.full_name || "");
       setTelefone(profile.phone || "");
+      setDataNascimento((profile as any).data_nascimento || "");
       setConfirmado(null);
+      setChefeCasa(false);
+      setQtdMoradores("");
+      setMelhorias({});
     }
     if (!open) {
       setConfirmado(null);
     }
   }, [open, profile]);
+  const idade = calcularIdade(dataNascimento);
+
 
   // Quanto já está ocupado neste lote
   const fracaoOcupada = proprietarios.reduce((s, p) => s + Number(p.fracao || 0), 0);
@@ -85,6 +117,10 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
         situacao,
         apoia_asfalto: true,
         assinatura_status: "confirmou",
+        data_nascimento: dataNascimento || null,
+        chefe_casa: chefeCasa,
+        qtd_moradores: qtdMoradores ? Number(qtdMoradores) : null,
+        melhorias,
       });
       if (insErr) throw insErr;
 
@@ -92,11 +128,25 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
       await recomputeLoteStatus(lote.id);
 
       // Mensagem para o morador enviar pro admin
+      const linhasMelhorias = MELHORIAS_OPCOES
+        .map((m) => {
+          const v = melhorias[m.key];
+          if (!v) return null;
+          return `• ${m.label}: ${v === "sim" ? "Precisa" : "Não precisa"}`;
+        })
+        .filter(Boolean)
+        .join("\n");
+
       const mensagem =
         `Olá ${ADMIN_NOME.split(" ")[0]}, sou ${nome.trim()} e estou apoiando o asfaltamento da ADECAF Rua Digna.\n\n` +
         `📍 Quadra ${quadra.nome} · Lote ${lote.numero}` +
         (tipoLote === "meio" ? " (meio lote)" : " (lote inteiro)") +
-        `\n📞 Meu contato: ${telefone.trim()}\n\nLi e concordo com o termo de autorização da ADECAF.`;
+        `\n📞 Meu contato: ${telefone.trim()}` +
+        (idade !== null ? `\n🎂 Idade: ${idade} anos` : "") +
+        (chefeCasa ? `\n👤 Sou chefe da casa` : "") +
+        (qtdMoradores ? `\n🏠 Moradores na casa: ${qtdMoradores}` : "") +
+        (linhasMelhorias ? `\n\n📋 Melhorias necessárias na rua:\n${linhasMelhorias}` : "") +
+        `\n\nLi e concordo com o termo de autorização da ADECAF.`;
 
       setConfirmado({ mensagem });
       onSaved?.();
@@ -118,7 +168,7 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             Quadra {quadra.nome} · Lote {lote.numero}
@@ -186,6 +236,77 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
               placeholder="(62) 9 9999-9999"
               inputMode="tel"
             />
+          </div>
+
+          <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+            <div>
+              <Label className="text-xs">Data de nascimento</Label>
+              <Input
+                type="date"
+                value={dataNascimento}
+                onChange={(e) => setDataNascimento(e.target.value)}
+                max={new Date().toISOString().slice(0, 10)}
+              />
+            </div>
+            <div className="text-xs text-muted-foreground pb-2 whitespace-nowrap">
+              {idade !== null ? <span><strong>{idade}</strong> anos</span> : "—"}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2 rounded-md border p-2">
+              <Checkbox
+                id="chefe-casa"
+                checked={chefeCasa}
+                onCheckedChange={(v) => setChefeCasa(!!v)}
+              />
+              <label htmlFor="chefe-casa" className="text-xs cursor-pointer leading-tight">
+                Sou o <strong>chefe da casa</strong>
+              </label>
+            </div>
+            <div>
+              <Label className="text-xs">Pessoas na casa</Label>
+              <Input
+                type="number"
+                min={1}
+                max={30}
+                value={qtdMoradores}
+                onChange={(e) => setQtdMoradores(e.target.value)}
+                placeholder="Ex.: 4"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2 rounded-md border p-3">
+            <Label className="text-xs font-semibold">
+              Pesquisa: o que está faltando na nossa rua?
+            </Label>
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              Para cada item, marque se precisa ou não.
+            </p>
+            <div className="space-y-1.5">
+              {MELHORIAS_OPCOES.map((m) => (
+                <div key={m.key} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="flex-1">{m.label}</span>
+                  <RadioGroup
+                    value={melhorias[m.key] ?? ""}
+                    onValueChange={(v) =>
+                      setMelhorias((prev) => ({ ...prev, [m.key]: v as "sim" | "nao" }))
+                    }
+                    className="flex gap-3"
+                  >
+                    <div className="flex items-center gap-1">
+                      <RadioGroupItem value="sim" id={`${m.key}-sim`} />
+                      <label htmlFor={`${m.key}-sim`} className="cursor-pointer">Precisa</label>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <RadioGroupItem value="nao" id={`${m.key}-nao`} />
+                      <label htmlFor={`${m.key}-nao`} className="cursor-pointer">Não</label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="space-y-2 rounded-md border p-3">
