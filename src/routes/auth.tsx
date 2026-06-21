@@ -21,7 +21,7 @@ import {
 } from "@/lib/auth-helpers";
 import { supabase } from "@/integrations/supabase/client";
 import { TERMO_TITULO, TERMO_TEXTO, TERMO_CHECKBOX } from "@/lib/termo";
-import { ADMIN_WHATSAPP, ADMIN_NOME, waLink } from "@/lib/admin-config";
+import { ADMIN_EMAIL, ADMIN_PHONE, ADMIN_WHATSAPP, ADMIN_NOME, waLink } from "@/lib/admin-config";
 import { AdecafLogo } from "@/components/logo";
 import { traduzirErro } from "@/lib/translate-error";
 
@@ -44,23 +44,25 @@ function AuthPage() {
   const [aceiteTermo, setAceiteTermo] = useState(false);
   const [showTermo, setShowTermo] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [mode, setMode] = useState<"signup" | "signin">("signup");
   const [adminLogin, setAdminLogin] = useState(false);
 
   async function handleSignIn() {
     setErr(null);
+    setMsg(null);
     setLoading(true);
     try {
       if (!phone.trim() || !password.trim()) throw new Error("Informe telefone e senha.");
       const { user } = await signInWithPhonePassword(phone, password);
       let dest: "/admin" | "/mapa" = "/mapa";
       if (user) {
-        const { data: roles } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id);
-        if (roles?.some((r) => r.role === "admin" || r.role === "coordenador")) {
+        const [{ data: isAdmin }, { data: isCoord }] = await Promise.all([
+          supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }),
+          supabase.rpc("has_role", { _user_id: user.id, _role: "coordenador" }),
+        ]);
+        if (isAdmin || isCoord) {
           dest = "/admin";
         }
       }
@@ -76,8 +78,26 @@ function AuthPage() {
     }
   }
 
+  async function handleAdminPasswordEmail() {
+    setErr(null);
+    setMsg(null);
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(ADMIN_EMAIL, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      setMsg(`Enviamos um link de troca de senha para ${ADMIN_EMAIL}.`);
+    } catch (e: any) {
+      setErr(traduzirErro(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleSignUp() {
     setErr(null);
+    setMsg(null);
     if (!phone.trim() || !name.trim() || !password.trim()) {
       setErr("Preencha nome, telefone e senha.");
       return;
@@ -124,18 +144,29 @@ function AuthPage() {
               <Field label="Telefone" value={phone} onChange={setPhone} placeholder="(00) 00000-0000" />
               <Field label="Senha" value={password} onChange={setPassword} placeholder="Sua senha" type="password" />
               {adminLogin && <p className="text-xs font-medium text-primary">Acesso administrativo</p>}
-              <p className="text-xs text-muted-foreground -mt-2">
-                Esqueceu a senha?{" "}
-                <a
-                  href={recoveryHref}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-primary underline font-medium"
+              {adminLogin ? (
+                <button
+                  type="button"
+                  onClick={handleAdminPasswordEmail}
+                  disabled={loading}
+                  className="block text-left text-xs text-muted-foreground -mt-2 underline-offset-2 hover:text-foreground hover:underline disabled:opacity-60"
                 >
-                  Fale com o administrador no WhatsApp
-                </a>{" "}
-                que ele gera uma nova para você.
-              </p>
+                  Enviar link para trocar senha no e-mail do admin
+                </button>
+              ) : (
+                <p className="text-xs text-muted-foreground -mt-2">
+                  Esqueceu a senha?{" "}
+                  <a
+                    href={recoveryHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary underline font-medium"
+                  >
+                    Fale com o administrador no WhatsApp
+                  </a>{" "}
+                  que ele gera uma nova para você.
+                </p>
+              )}
               <Button className="w-full" disabled={loading} onClick={handleSignIn}>
                 {loading ? "Entrando…" : "Entrar"}
               </Button>
@@ -144,6 +175,7 @@ function AuthPage() {
                 className="block w-full text-center text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
                 onClick={() => {
                   setErr(null);
+                  setMsg(null);
                   setAdminLogin(false);
                   setMode("signup");
                 }}
@@ -197,7 +229,8 @@ function AuthPage() {
                   className="w-full"
                   onClick={() => {
                     setErr(null);
-                  setAdminLogin(false);
+                    setMsg(null);
+                    setAdminLogin(false);
                     setMode("signin");
                   }}
                 >
@@ -205,9 +238,12 @@ function AuthPage() {
                 </Button>
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     setErr(null);
+                    setMsg(null);
+                    await supabase.auth.signOut();
                     setAdminLogin(true);
+                    setPhone(ADMIN_PHONE);
                     setPassword("");
                     setMode("signin");
                   }}
@@ -221,6 +257,11 @@ function AuthPage() {
           {err && (
             <Alert variant="destructive" className="mt-4">
               <AlertDescription>{err}</AlertDescription>
+            </Alert>
+          )}
+          {msg && (
+            <Alert className="mt-4 border-primary/30 bg-primary/10 text-primary">
+              <AlertDescription>{msg}</AlertDescription>
             </Alert>
           )}
         </CardContent>
