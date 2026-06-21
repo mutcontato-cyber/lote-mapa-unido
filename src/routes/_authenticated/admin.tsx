@@ -359,6 +359,81 @@ function AdminPage() {
           </Card>
         )}
 
+        {isAdmin && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="flex items-center gap-2">
+                  <FileSpreadsheet className="h-5 w-5 text-primary" />
+                  Cadastros enviados
+                  <Badge variant="secondary">{cadastros.length}</Badge>
+                </span>
+                <Button size="sm" onClick={baixarTodos} disabled={!cadastros.length}>
+                  <Download className="h-4 w-4 mr-1" />
+                  Baixar todos (CSV)
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {cadastros.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum cadastro recebido ainda.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Telefone</TableHead>
+                        <TableHead>Quadra / Lote</TableHead>
+                        <TableHead>Apoia</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {cadastros.map((c) => (
+                        <TableRow key={c.id}>
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(c.data_cadastro).toLocaleDateString("pt-BR")}
+                          </TableCell>
+                          <TableCell className="font-medium">{c.nome}</TableCell>
+                          <TableCell className="whitespace-nowrap">{c.telefone ?? "—"}</TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {c.quadra_nome} / {c.lote_numero}
+                            {c.fracao < 1 && (
+                              <Badge variant="outline" className="ml-2">
+                                {Math.round(c.fracao * 100)}%
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {c.apoia_asfalto === true ? (
+                              <Badge className="bg-green-600">Sim</Badge>
+                            ) : c.apoia_asfalto === false ? (
+                              <Badge variant="destructive">Não</Badge>
+                            ) : (
+                              <Badge variant="outline">—</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button size="sm" variant="outline" onClick={() => baixarUm(c)}>
+                              <Download className="h-3.5 w-3.5 mr-1" />
+                              Baixar
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground mt-3">
+                Os cadastros são gravados automaticamente assim que o morador confirma o lote. Os arquivos CSV podem ser abertos no Excel ou Google Planilhas.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>Configurar mapa do loteamento</CardTitle>
