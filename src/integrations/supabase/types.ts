@@ -93,6 +93,7 @@ export type Database = {
           aceite_termo_at: string | null
           aceite_termo_texto: string | null
           created_at: string
+          data_nascimento: string | null
           full_name: string
           id: string
           phone: string
@@ -101,6 +102,7 @@ export type Database = {
           aceite_termo_at?: string | null
           aceite_termo_texto?: string | null
           created_at?: string
+          data_nascimento?: string | null
           full_name: string
           id: string
           phone: string
@@ -109,6 +111,7 @@ export type Database = {
           aceite_termo_at?: string | null
           aceite_termo_texto?: string | null
           created_at?: string
+          data_nascimento?: string | null
           full_name?: string
           id?: string
           phone?: string
