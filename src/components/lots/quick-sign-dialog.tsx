@@ -42,7 +42,7 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
       if (insErr) throw insErr;
       const { error: upErr } = await supabase
         .from("lotes")
-        .update({ status: "confirmado" })
+        .update({ status: "cadastrado" })
         .eq("id", lote.id);
       if (upErr) throw upErr;
       toast.success("Apoio registrado! Obrigado por participar 💚");
