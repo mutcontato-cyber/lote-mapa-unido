@@ -200,6 +200,77 @@ function AdminPage() {
     }
   }
 
+  function formatMelhorias(m: any): string {
+    if (!m || typeof m !== "object") return "";
+    return Object.entries(m)
+      .filter(([, v]) => v === "sim" || v === "nao")
+      .map(([k, v]) => `${k}:${v}`)
+      .join("; ");
+  }
+
+  function rowToObject(r: CadastroRow) {
+    return {
+      Nome: r.nome,
+      Telefone: r.telefone ?? "",
+      WhatsApp: r.whatsapp ?? "",
+      CPF: r.cpf ?? "",
+      Email: r.email ?? "",
+      Endereco: r.endereco ?? "",
+      DataNascimento: r.data_nascimento ?? "",
+      ChefeCasa: r.chefe_casa ? "Sim" : r.chefe_casa === false ? "Nao" : "",
+      QtdMoradores: r.qtd_moradores ?? "",
+      Quadra: r.quadra_nome,
+      Lote: r.lote_numero,
+      Fracao: r.fracao,
+      ApoiaAsfalto: r.apoia_asfalto ? "Sim" : r.apoia_asfalto === false ? "Nao" : "",
+      AssinaturaStatus: r.assinatura_status,
+      Situacao: r.situacao ?? "",
+      Melhorias: formatMelhorias(r.melhorias),
+      Observacoes: r.observacoes ?? "",
+      DataCadastro: new Date(r.data_cadastro).toLocaleString("pt-BR"),
+    };
+  }
+
+  function toCSV(rows: Record<string, any>[]): string {
+    if (!rows.length) return "";
+    const headers = Object.keys(rows[0]);
+    const escape = (v: any) => {
+      const s = String(v ?? "");
+      return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const lines = [headers.join(";")];
+    for (const r of rows) lines.push(headers.map((h) => escape(r[h])).join(";"));
+    return "\ufeff" + lines.join("\n");
+  }
+
+  function downloadFile(filename: string, content: string, mime = "text/csv;charset=utf-8") {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function baixarUm(r: CadastroRow) {
+    const csv = toCSV([rowToObject(r)]);
+    const safe = r.nome.replace(/[^\w\d-]+/g, "_");
+    downloadFile(`cadastro-${safe}.csv`, csv);
+  }
+
+  function baixarTodos() {
+    if (!cadastros.length) {
+      toast.error("Nenhum cadastro para baixar");
+      return;
+    }
+    const csv = toCSV(cadastros.map(rowToObject));
+    const data = new Date().toISOString().slice(0, 10);
+    downloadFile(`cadastros-adecaf-${data}.csv`, csv);
+  }
+
   if (!isStaff) {
     return (
       <AppShell>
