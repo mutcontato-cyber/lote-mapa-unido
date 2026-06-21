@@ -5,19 +5,20 @@ export function normalizePhone(phone: string) {
   return phone.replace(/\D/g, "");
 }
 
-// Convert phone+name into a deterministic email/password pair so we can
-// reuse Supabase auth without exposing the user to email/password UI.
-function credsFor(phone: string, name: string) {
-  const p = normalizePhone(phone);
-  const slug = name.trim().toLowerCase().replace(/\s+/g, ".").replace(/[^a-z0-9.]/g, "");
-  return {
-    email: `${p}@adecaf.local`,
-    password: `${p}#${slug || "user"}#adecaf`,
-  };
+// O usuário entra com telefone + senha. O telefone é convertido em um
+// e-mail sintético (`{telefone}@adecaf.local`) só para usar a auth do
+// Supabase, mas a senha é a que o próprio morador escolheu.
+export function emailForPhone(phone: string) {
+  return `${normalizePhone(phone)}@adecaf.local`;
 }
 
-export async function signUpWithPhoneName(phone: string, name: string) {
-  const { email, password } = credsFor(phone, name);
+export async function signUpWithPhonePassword(
+  phone: string,
+  name: string,
+  password: string,
+  termoTexto?: string,
+) {
+  const email = emailForPhone(phone);
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -27,14 +28,31 @@ export async function signUpWithPhoneName(phone: string, name: string) {
     },
   });
   if (error) throw error;
+
+  // Registra aceite do termo no profile
+  if (data.user && termoTexto) {
+    await supabase
+      .from("profiles")
+      .update({ aceite_termo_at: new Date().toISOString(), aceite_termo_texto: termoTexto })
+      .eq("id", data.user.id);
+  }
   return data;
 }
 
-export async function signInWithPhoneName(phone: string, name: string) {
-  const { email, password } = credsFor(phone, name);
+export async function signInWithPhonePassword(phone: string, password: string) {
+  const email = emailForPhone(phone);
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
   return data;
+}
+
+export async function requestPasswordReset(phone: string, fullName: string) {
+  const { error } = await supabase.from("password_resets").insert({
+    phone: normalizePhone(phone),
+    full_name: fullName.trim() || null,
+    status: "pendente",
+  });
+  if (error) throw error;
 }
 
 export async function signOut() {
