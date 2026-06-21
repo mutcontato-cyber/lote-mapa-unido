@@ -215,31 +215,79 @@ function MapaPage() {
   );
 }
 
-function QuadraBlock({
+function SectorHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="flex items-baseline justify-between border-b-2 border-primary/30 pb-2">
+      <h2 className="text-lg font-bold text-foreground">{title}</h2>
+      <span className="text-xs text-muted-foreground">{subtitle}</span>
+    </div>
+  );
+}
+
+function QuadraCard({
   quadra,
   lotes,
+  streets,
   isHighlighted,
   onLoteClick,
 }: {
   quadra: Quadra;
   lotes: Lote[];
+  streets: { n: string; s: string; w: string; e: string };
   isHighlighted: (l: Lote) => boolean;
   onLoteClick: (l: Lote) => void;
 }) {
-  // Two rows mimicking the printed layout: bottom row right→left, top row left→right
+  // Linha de cima: primeira metade (esq → dir). Linha de baixo: segunda metade (dir → esq).
   const half = Math.ceil(lotes.length / 2);
   const topRow = lotes.slice(0, half);
   const bottomRow = lotes.slice(half).reverse();
 
   return (
-    <div className="flex flex-col items-center gap-1 rounded-md border-2 border-[oklch(0.55_0.12_140)] bg-[oklch(0.92_0.05_140)] p-2 shrink-0">
-      <div className="flex flex-col gap-0.5">
-        <Row lotes={topRow} isHighlighted={isHighlighted} onClick={onLoteClick} />
-        <Row lotes={bottomRow} isHighlighted={isHighlighted} onClick={onLoteClick} />
+    <Card className="p-3 sm:p-4 overflow-x-auto">
+      <div className="flex items-center justify-between mb-2 px-1">
+        <div className="flex items-center gap-2">
+          <div className="text-sm font-bold rounded-full bg-primary text-primary-foreground w-9 h-9 flex items-center justify-center shadow">
+            {quadra.nome.padStart(2, "0")}
+          </div>
+          <div>
+            <div className="text-sm font-bold leading-tight">Quadra {quadra.nome}</div>
+            <div className="text-[11px] text-muted-foreground leading-tight">{lotes.length} lotes</div>
+          </div>
+        </div>
       </div>
-      <div className="text-[10px] font-bold rounded-full bg-white border-2 border-[oklch(0.45_0.12_140)] w-7 h-7 flex items-center justify-center mt-1">
-        {quadra.nome.padStart(2, "0")}
+
+      <div className="min-w-max">
+        <StreetLabel label={streets.n} direction="h" />
+        <div className="grid grid-cols-[auto_1fr_auto] items-stretch gap-0 my-1">
+          <StreetLabel label={streets.w} direction="v" />
+          <div className="flex flex-col gap-0.5 px-1 py-1 bg-[oklch(0.93_0.05_140)] border-y-2 border-[oklch(0.55_0.12_140)]">
+            <Row lotes={topRow} isHighlighted={isHighlighted} onClick={onLoteClick} />
+            <Row lotes={bottomRow} isHighlighted={isHighlighted} onClick={onLoteClick} />
+          </div>
+          <StreetLabel label={streets.e} direction="v" />
+        </div>
+        <StreetLabel label={streets.s} direction="h" />
       </div>
+    </Card>
+  );
+}
+
+function StreetLabel({ label, direction }: { label: string; direction: "h" | "v" }) {
+  if (direction === "h") {
+    return (
+      <div className="text-[10px] font-bold tracking-widest text-muted-foreground bg-white border border-dashed border-muted-foreground/40 py-1 px-2 text-center rounded-sm">
+        ▬ {label} ▬
+      </div>
+    );
+  }
+  return (
+    <div
+      className="flex items-center justify-center bg-white border border-dashed border-muted-foreground/40 px-1 mx-0 rounded-sm"
+      style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
+    >
+      <span className="text-[10px] font-bold tracking-widest text-muted-foreground whitespace-nowrap py-1">
+        {label}
+      </span>
     </div>
   );
 }
@@ -283,47 +331,6 @@ function Legend({ status, count }: { status: LoteStatus; count: number }) {
       />
       <span className="text-muted-foreground">{STATUS_LABEL[status]}</span>
       <span className="font-semibold">{count}</span>
-    </div>
-  );
-}
-
-function StreetBar({ label, emphasis }: { label: string; emphasis?: boolean }) {
-  return (
-    <div
-      className={cn(
-        "text-[11px] font-bold tracking-widest text-center py-1 my-1 rounded-sm border-y border-dashed",
-        emphasis
-          ? "bg-[oklch(0.85_0.13_60)] text-[oklch(0.25_0.08_60)] border-[oklch(0.55_0.15_60)]"
-          : "bg-white/60 text-muted-foreground border-muted-foreground/40",
-      )}
-    >
-      ▬ {label} ▬
-    </div>
-  );
-}
-
-function StreetVertical({ label }: { label: string }) {
-  return (
-    <div
-      className="flex items-center justify-center bg-white/70 border border-dashed border-muted-foreground/40 mx-0.5 px-1 rounded-sm"
-      style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
-    >
-      <span className="text-[10px] font-bold tracking-wider text-muted-foreground whitespace-nowrap py-1">
-        {label}
-      </span>
-    </div>
-  );
-}
-
-function AreaLabel({ label }: { label: string }) {
-  return (
-    <div
-      className="flex items-center justify-center bg-[oklch(0.88_0.1_140)] border-2 border-dashed border-[oklch(0.55_0.15_140)] mx-0.5 px-2 rounded-sm"
-      style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
-    >
-      <span className="text-[10px] font-bold tracking-wider text-[oklch(0.3_0.1_140)] whitespace-nowrap py-2">
-        {label}
-      </span>
     </div>
   );
 }
