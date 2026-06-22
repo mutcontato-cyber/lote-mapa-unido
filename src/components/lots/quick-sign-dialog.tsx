@@ -341,6 +341,62 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
             </div>
           </div>
 
+          {outrosMoradores.length > 0 && (
+            <div className="space-y-3 rounded-md border p-3">
+              <Label className="text-xs font-semibold">Dados das outras pessoas que moram na casa</Label>
+              <p className="text-[11px] text-muted-foreground -mt-1">
+                Nome, telefone/WhatsApp e data de nascimento são obrigatórios.
+              </p>
+              {outrosMoradores.map((m, i) => (
+                <div key={i} className="border rounded-lg p-3 bg-muted/20 space-y-3">
+                  <div className="text-sm font-medium">Pessoa {i + 2}</div>
+                  <div>
+                    <Label className="text-xs">Nome completo *</Label>
+                    <Input
+                      value={m.nome}
+                      onChange={(e) =>
+                        setOutrosMoradores((arr) =>
+                          arr.map((item, idx) => (idx === i ? { ...item, nome: e.target.value } : item))
+                        )
+                      }
+                      placeholder="Nome completo"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Telefone / WhatsApp *</Label>
+                      <Input
+                        value={m.telefone}
+                        onChange={(e) =>
+                          setOutrosMoradores((arr) =>
+                            arr.map((item, idx) => (idx === i ? { ...item, telefone: e.target.value } : item))
+                          )
+                        }
+                        placeholder="(62) 9 9999-9999"
+                        inputMode="tel"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Data de nascimento *</Label>
+                      <Input
+                        type="date"
+                        value={m.data_nascimento}
+                        onChange={(e) =>
+                          setOutrosMoradores((arr) =>
+                            arr.map((item, idx) =>
+                              idx === i ? { ...item, data_nascimento: e.target.value } : item
+                            )
+                          )
+                        }
+                        max={new Date().toISOString().slice(0, 10)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="space-y-2 rounded-md border p-3">
             <Label className="text-xs font-semibold">
               Pesquisa: o que está faltando na nossa rua?
