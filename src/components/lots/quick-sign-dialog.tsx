@@ -349,17 +349,14 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
                 value={qtdMoradores}
                 onChange={(e) => {
                   const val = e.target.value;
-                  console.log("qtd change", val);
                   setQtdMoradores(val);
                   const count = Math.max(0, Math.min(30, Number(val) || 0));
                   const others = Math.max(0, count - 1);
-                  console.log("others", others);
                   setOutrosMoradores((prev) => {
                     const next = prev.slice(0, others);
                     while (next.length < others) {
                       next.push({ nome: "", telefone: "", data_nascimento: "" });
                     }
-                    console.log("new outros", next.length);
                     return next;
                   });
                 }}
