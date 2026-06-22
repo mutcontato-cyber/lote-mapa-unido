@@ -360,7 +360,18 @@ function AdminPage() {
         lote_numero: p.lotes?.numero ?? "",
         quadra_nome: p.lotes?.quadras?.nome ?? "",
         loteamento_id: p.lotes?.quadras?.loteamento_id ?? "",
+        lote_id: p.lote_id,
       }));
+
+      const { data: mds } = await supabase.from("moradores" as any).select("*");
+      const moradoresByLote = new Map<string, MoradorRow[]>();
+      ((mds as unknown) as MoradorRow[] | null)?.forEach((m) => {
+        const arr = moradoresByLote.get(m.lote_id) || [];
+        arr.push(m);
+        moradoresByLote.set(m.lote_id, arr);
+      });
+      rows.forEach((r) => { r.moradores = moradoresByLote.get(r.lote_id) || []; });
+
       setCadastros(rows);
     }
   }
