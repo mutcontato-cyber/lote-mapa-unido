@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      configuracoes: {
+        Row: {
+          id: string
+          valor: string
+        }
+        Insert: {
+          id: string
+          valor: string
+        }
+        Update: {
+          id?: string
+          valor?: string
+        }
+        Relationships: []
+      }
+      loteamentos: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
       lotes: {
         Row: {
           created_at: string
@@ -202,6 +238,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          loteamento_id: string
           nome: string
           observacoes: string | null
           ordem: number
@@ -209,6 +246,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          loteamento_id: string
           nome: string
           observacoes?: string | null
           ordem?: number
@@ -216,11 +254,20 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          loteamento_id?: string
           nome?: string
           observacoes?: string | null
           ordem?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quadras_loteamento_id_fkey"
+            columns: ["loteamento_id"]
+            isOneToOne: false
+            referencedRelation: "loteamentos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
