@@ -693,6 +693,24 @@ function AdminPage() {
       columnStyles: { 0: { fontStyle: 'bold', fillColor: [245, 245, 245], cellWidth: 60 } }
     });
 
+    const moradores = c.moradores ?? [];
+    if (moradores.length) {
+      const finalY = (doc as any).lastAutoTable?.finalY ?? 32;
+      doc.setFontSize(12);
+      doc.text("Moradores da Residência", 14, finalY + 10);
+      autoTable(doc, {
+        startY: finalY + 14,
+        head: [["Nome", "Data de Nascimento", "Telefone"]],
+        body: moradores.map((m) => [
+          m.nome,
+          m.data_nascimento ? new Date(m.data_nascimento).toLocaleDateString("pt-BR") : "—",
+          m.telefone || "—",
+        ]),
+        styles: { fontSize: 10, cellPadding: 3 },
+        headStyles: { fillColor: [41, 128, 185] },
+      });
+    }
+
     const safe = c.nome.replace(/[^\w\d-]+/g, "_");
     doc.save(`ficha-${safe}.pdf`);
   }
