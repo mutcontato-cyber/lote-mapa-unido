@@ -56,6 +56,16 @@ interface CadastroRow {
   data_cadastro: string;
   lote_numero: string;
   quadra_nome: string;
+  lote_id: string;
+  moradores?: MoradorRow[];
+}
+
+interface MoradorRow {
+  id: string;
+  lote_id: string;
+  nome: string;
+  data_nascimento: string | null;
+  telefone: string | null;
 }
 
 export const Route = createFileRoute("/_authenticated/admin")({
