@@ -5,11 +5,12 @@ import { STATUS_LABEL, type LoteStatus } from "@/components/lots/lot-tile";
 import { QuickSignDialog } from "@/components/lots/quick-sign-dialog";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { fetchLotes, fetchProprietarios, fetchQuadras, type Lote, type Proprietario, type Quadra } from "@/lib/queries";
+import { fetchLoteamentos, fetchLotes, fetchProprietarios, fetchQuadras, type Loteamento, type Lote, type Proprietario, type Quadra } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Search } from "lucide-react";
 import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/mapa")({
   head: () => ({ meta: [{ title: "Mapa do Loteamento — ADECAF Rua Digna" }] }),
@@ -17,31 +18,51 @@ export const Route = createFileRoute("/_authenticated/mapa")({
 });
 
 function MapaPage() {
+  const [loteamentos, setLoteamentos] = useState<Loteamento[]>([]);
+  const [loteamentoId, setLoteamentoId] = useState<string>("");
   const [quadras, setQuadras] = useState<Quadra[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [props, setProps] = useState<Proprietario[]>([]);
   const [selected, setSelected] = useState<Lote | null>(null);
   const [q, setQ] = useState("");
 
-  async function load() {
-    const [qs, ls, ps] = await Promise.all([fetchQuadras(), fetchLotes(), fetchProprietarios()]);
+  useEffect(() => {
+    fetchLoteamentos().then((data) => {
+      setLoteamentos(data);
+      if (data.length > 0 && !loteamentoId) {
+        setLoteamentoId(data[0].id);
+      }
+    });
+  }, []);
+
+  async function load(currentId: string) {
+    if (!currentId) return;
+    const [qs, ls, ps] = await Promise.all([fetchQuadras(currentId), fetchLotes(), fetchProprietarios()]);
+    
+    // Filtra localmente apenas os lotes e proprietários das quadras deste loteamento
+    const qIds = new Set(qs.map(q => q.id));
+    const lotesFiltered = ls.filter(l => qIds.has(l.quadra_id));
+    const lotesIds = new Set(lotesFiltered.map(l => l.id));
+    const propsFiltered = ps.filter(p => lotesIds.has(p.lote_id));
+    
     setQuadras(qs);
-    setLotes(ls);
-    setProps(ps);
+    setLotes(lotesFiltered);
+    setProps(propsFiltered);
   }
 
   useEffect(() => {
-    load();
+    if (!loteamentoId) return;
+    load(loteamentoId);
     const ch = supabase
       .channel("mapa")
-      .on("postgres_changes", { event: "*", schema: "public", table: "lotes" }, load)
-      .on("postgres_changes", { event: "*", schema: "public", table: "proprietarios" }, load)
-      .on("postgres_changes", { event: "*", schema: "public", table: "quadras" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "lotes" }, () => load(loteamentoId))
+      .on("postgres_changes", { event: "*", schema: "public", table: "proprietarios" }, () => load(loteamentoId))
+      .on("postgres_changes", { event: "*", schema: "public", table: "quadras" }, () => load(loteamentoId))
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
-  }, []);
+  }, [loteamentoId]);
 
   const propsByLote = useMemo(() => {
     const m = new Map<string, Proprietario[]>();
@@ -107,13 +128,28 @@ function MapaPage() {
   const ordemSetor2 = ["4", "5", "6", "7", "8"];
   const findQ = (nome: string) => quadras.find((q) => q.nome === nome);
 
+  const isMariaRita = loteamentoId === 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+  const selectedLoteamento = loteamentos.find((l) => l.id === loteamentoId);
+
   return (
     <AppShell>
       <Toaster position="top-right" richColors />
       <div className="mx-auto max-w-7xl px-4 py-6 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Residencial Maria Rita — Planta do Loteamento</h1>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-2xl font-bold tracking-tight">Planta do Loteamento</h1>
+              <Select value={loteamentoId} onValueChange={setLoteamentoId}>
+                <SelectTrigger className="w-[280px] h-8">
+                  <SelectValue placeholder="Selecione um loteamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {loteamentos.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>{l.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <p className="text-sm text-muted-foreground">
               Encontre seu lote no mapa e clique para apoiar o asfaltamento da Rua. Os lotes verdes já apoiam.
             </p>
@@ -150,13 +186,13 @@ function MapaPage() {
           </div>
         </Card>
 
-        {quadras.length === 0 && (
+        {quadras.length === 0 && loteamentoId ? (
           <Card className="p-8 text-center text-muted-foreground">
-            Carregando o mapa…
+            {lotes.length === 0 ? "Nenhuma quadra cadastrada neste loteamento." : "Carregando o mapa…"}
           </Card>
-        )}
+        ) : null}
 
-        {quadras.length > 0 && (
+        {quadras.length > 0 && isMariaRita ? (
           <div className="space-y-6">
             <SectorHeader title="Setor Sul · Junto à Área Verde" subtitle="Quadras 1 a 3" />
             <div className="space-y-5">
@@ -198,7 +234,25 @@ function MapaPage() {
               })}
             </div>
           </div>
-        )}
+        ) : null}
+
+        {quadras.length > 0 && !isMariaRita ? (
+          <div className="space-y-6">
+            <SectorHeader title="Todas as Quadras" subtitle={selectedLoteamento?.nome || ""} />
+            <div className="space-y-5">
+              {quadras.map((qd) => (
+                <QuadraCard
+                  key={qd.id}
+                  quadra={qd}
+                  streets={{ n: "Rua", s: "Rua", w: "Rua", e: "Rua" }}
+                  lotes={lotesByQuadra.get(qd.id) ?? []}
+                  isHighlighted={(l) => isHighlighted(l, qd)}
+                  onLoteClick={setSelected}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {selected && (

@@ -16,22 +16,28 @@ export function useAuth() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setLoading(true);
       setSession(s);
       setUser(s?.user ?? null);
     });
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
-      if (!data.session?.user) setLoading(false);
+      if (!data.session?.user) {
+        setLoading(false);
+      }
+      setInitialFetchDone(true);
     });
     return () => sub.subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
+    // Só tenta buscar roles se já confirmou se tem ou não usuário na sessão inicial
+    if (!initialFetchDone) return;
+
     if (!user) {
       setProfile(null);
       setRoles([]);

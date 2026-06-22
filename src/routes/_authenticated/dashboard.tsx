@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { fetchLotes, fetchProprietarios, fetchQuadras, type Lote, type Proprietario, type Quadra } from "@/lib/queries";
+import { fetchLotes, fetchProprietarios, fetchQuadras, fetchLoteamentos, type Lote, type Proprietario, type Quadra, type Loteamento } from "@/lib/queries";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Users, Map as MapIcon, CheckCircle2, AlertTriangle, TrendingUp } from "lucide-react";
@@ -15,20 +16,37 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 function Dashboard() {
-  const { isAdmin, loading } = useAuth();
+  const { isStaff, loading } = useAuth();
   const [quadras, setQuadras] = useState<Quadra[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [props, setProps] = useState<Proprietario[]>([]);
+  const [loteamentos, setLoteamentos] = useState<Loteamento[]>([]);
+  const [loteamentoId, setLoteamentoId] = useState<string>("");
 
   useEffect(() => {
-    Promise.all([fetchQuadras(), fetchLotes(), fetchProprietarios()]).then(([q, l, p]) => {
-      setQuadras(q);
-      setLotes(l);
-      setProps(p);
+    fetchLoteamentos().then((data) => {
+      setLoteamentos(data);
+      if (data.length > 0 && !loteamentoId) {
+        setLoteamentoId(data[0].id);
+      }
     });
   }, []);
 
-  if (!loading && !isAdmin) return <Navigate to="/mapa" />;
+  useEffect(() => {
+    if (!loteamentoId) return;
+    Promise.all([fetchQuadras(loteamentoId), fetchLotes(), fetchProprietarios()]).then(([qs, ls, ps]) => {
+      const qIds = new Set(qs.map(q => q.id));
+      const lotesFiltered = ls.filter(l => qIds.has(l.quadra_id));
+      const lotesIds = new Set(lotesFiltered.map(l => l.id));
+      const propsFiltered = ps.filter(p => lotesIds.has(p.lote_id));
+      
+      setQuadras(qs);
+      setLotes(lotesFiltered);
+      setProps(propsFiltered);
+    });
+  }, [loteamentoId]);
+
+  if (!loading && !isStaff) return <Navigate to="/mapa" />;
 
   const totalLotes = lotes.length;
   const semCadastro = lotes.filter((l) => l.status === "sem_cadastro").length;
@@ -41,9 +59,22 @@ function Dashboard() {
   return (
     <AppShell>
       <div className="mx-auto max-w-7xl px-4 py-6 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Visão geral da campanha de asfaltamento.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Dashboard</h1>
+            <p className="text-sm text-muted-foreground">Visão geral da campanha de asfaltamento.</p>
+          </div>
+          
+          <Select value={loteamentoId} onValueChange={setLoteamentoId}>
+            <SelectTrigger className="w-full sm:w-[280px]">
+              <SelectValue placeholder="Selecione um loteamento" />
+            </SelectTrigger>
+            <SelectContent>
+              {loteamentos.map((l) => (
+                <SelectItem key={l.id} value={l.id}>{l.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">

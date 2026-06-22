@@ -4,7 +4,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { fetchLotes, fetchProprietarios, fetchQuadras, type Lote, type Proprietario, type Quadra } from "@/lib/queries";
+import { fetchLotes, fetchProprietarios, fetchQuadras, fetchLoteamentos, type Lote, type Proprietario, type Quadra, type Loteamento } from "@/lib/queries";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileSpreadsheet, FileDown } from "lucide-react";
 import { STATUS_LABEL } from "@/components/lots/lot-tile";
 
@@ -14,20 +15,37 @@ export const Route = createFileRoute("/_authenticated/relatorios")({
 });
 
 function Relatorios() {
-  const { isAdmin, loading } = useAuth();
+  const { isStaff, loading } = useAuth();
   const [quadras, setQuadras] = useState<Quadra[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [props, setProps] = useState<Proprietario[]>([]);
+  const [loteamentos, setLoteamentos] = useState<Loteamento[]>([]);
+  const [loteamentoId, setLoteamentoId] = useState<string>("");
 
   useEffect(() => {
-    Promise.all([fetchQuadras(), fetchLotes(), fetchProprietarios()]).then(([q, l, p]) => {
-      setQuadras(q);
-      setLotes(l);
-      setProps(p);
+    fetchLoteamentos().then((data) => {
+      setLoteamentos(data);
+      if (data.length > 0 && !loteamentoId) {
+        setLoteamentoId(data[0].id);
+      }
     });
   }, []);
 
-  if (!loading && !isAdmin) return <Navigate to="/mapa" />;
+  useEffect(() => {
+    if (!loteamentoId) return;
+    Promise.all([fetchQuadras(loteamentoId), fetchLotes(), fetchProprietarios()]).then(([qs, ls, ps]) => {
+      const qIds = new Set(qs.map(q => q.id));
+      const lotesFiltered = ls.filter(l => qIds.has(l.quadra_id));
+      const lotesIds = new Set(lotesFiltered.map(l => l.id));
+      const propsFiltered = ps.filter(p => lotesIds.has(p.lote_id));
+      
+      setQuadras(qs);
+      setLotes(lotesFiltered);
+      setProps(propsFiltered);
+    });
+  }, [loteamentoId]);
+
+  if (!loading && !isStaff) return <Navigate to="/mapa" />;
 
   const quadraName = (id: string) => quadras.find((q) => q.id === id)?.nome ?? "?";
   const loteInfo = (id: string) => {
@@ -112,9 +130,22 @@ function Relatorios() {
   return (
     <AppShell>
       <div className="mx-auto max-w-5xl px-4 py-6 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Relatórios</h1>
-          <p className="text-sm text-muted-foreground">Exporte os dados em PDF ou Excel.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Relatórios</h1>
+            <p className="text-sm text-muted-foreground">Exporte os dados em PDF ou Excel.</p>
+          </div>
+
+          <Select value={loteamentoId} onValueChange={setLoteamentoId}>
+            <SelectTrigger className="w-full sm:w-[280px]">
+              <SelectValue placeholder="Selecione um loteamento" />
+            </SelectTrigger>
+            <SelectContent>
+              {loteamentos.map((l) => (
+                <SelectItem key={l.id} value={l.id}>{l.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           {reports.map((r) => (

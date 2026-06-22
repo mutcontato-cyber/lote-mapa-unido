@@ -96,3 +96,70 @@ export const deleteMorador = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true };
   });
+
+/**
+ * Envia uma mensagem via Evolution API.
+ * Requer variáveis de ambiente:
+ * EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_INSTANCE
+ */
+export const sendEvolutionWhatsApp = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => 
+    z.object({ 
+      phone: z.string(), 
+      message: z.string() 
+    }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+    const { data: isCoord } = await supabase.rpc("has_role", { _user_id: userId, _role: "coordenador" });
+    
+    if (!isAdmin && !isCoord) {
+      throw new Error("Apenas administradores e coordenadores podem enviar mensagens.");
+    }
+
+    const apiUrl = process.env.EVOLUTION_API_URL;
+    const apiKey = process.env.EVOLUTION_API_KEY;
+    const instance = process.env.EVOLUTION_INSTANCE;
+
+    if (!apiUrl || !apiKey || !instance) {
+      throw new Error("Evolution API não está configurada no servidor (.env ausente).");
+    }
+
+    // Formatar telefone: remover tudo que não for número
+    let number = data.phone.replace(/\D/g, "");
+    if (number.length === 11 || number.length === 10) {
+      number = "55" + number; // Add brazil code
+    }
+
+    const endpoint = `${apiUrl}/message/sendText/${instance}`;
+
+    const reqData = {
+      number: number,
+      text: data.message,
+      options: {
+        delay: 1200,
+        presence: "composing"
+      }
+    };
+
+    // Ignorar erro de certificado SSL self-signed temporariamente
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": apiKey
+      },
+      body: JSON.stringify(reqData)
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Falha no envio da mensagem Evolution API: ${err}`);
+    }
+
+    return { ok: true };
+  });

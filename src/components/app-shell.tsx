@@ -27,7 +27,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     nav({ to: "/auth" });
   }
 
-  const visibleNav = NAV.filter((n) => !n.adminOnly || (!loading && isAdmin));
+  const visibleNav = NAV.filter((n) => !n.adminOnly || (!loading && isStaff));
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

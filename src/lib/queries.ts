@@ -1,8 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { LoteStatus } from "@/components/lots/lot-tile";
 
+export interface Loteamento {
+  id: string;
+  nome: string;
+  descricao: string | null;
+}
+
 export interface Quadra {
   id: string;
+  loteamento_id: string;
   nome: string;
   ordem: number;
   observacoes: string | null;
@@ -34,12 +41,21 @@ export interface Proprietario {
   observacoes: string | null;
 }
 
-export async function fetchQuadras() {
+export async function fetchLoteamentos() {
   const { data, error } = await supabase
-    .from("quadras")
+    .from("loteamentos")
     .select("*")
-    .order("ordem")
     .order("nome");
+  if (error) throw error;
+  return data as Loteamento[];
+}
+
+export async function fetchQuadras(loteamentoId?: string) {
+  let query = supabase.from("quadras").select("*").order("ordem").order("nome");
+  if (loteamentoId) {
+    query = query.eq("loteamento_id", loteamentoId);
+  }
+  const { data, error } = await query;
   if (error) throw error;
   return data as Quadra[];
 }
