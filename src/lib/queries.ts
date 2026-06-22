@@ -39,6 +39,7 @@ export interface Proprietario {
   data_cadastro: string;
   responsavel_cadastro: string | null;
   observacoes: string | null;
+  melhorias: Record<string, string> | null;
 }
 
 export async function fetchLoteamentos() {

@@ -88,6 +88,21 @@ export type Database = {
           },
         ]
       }
+      mensagens_customizadas: {
+        Row: {
+          mensagem: string
+          telefone: string
+        }
+        Insert: {
+          mensagem: string
+          telefone: string
+        }
+        Update: {
+          mensagem?: string
+          telefone?: string
+        }
+        Relationships: []
+      }
       password_resets: {
         Row: {
           fulfilled_at: string | null
@@ -132,6 +147,7 @@ export type Database = {
           data_nascimento: string | null
           full_name: string
           id: string
+          loteamento_id: string | null
           phone: string
         }
         Insert: {
@@ -141,6 +157,7 @@ export type Database = {
           data_nascimento?: string | null
           full_name: string
           id: string
+          loteamento_id?: string | null
           phone: string
         }
         Update: {
@@ -150,9 +167,18 @@ export type Database = {
           data_nascimento?: string | null
           full_name?: string
           id?: string
+          loteamento_id?: string | null
           phone?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_loteamento_id_fkey"
+            columns: ["loteamento_id"]
+            isOneToOne: false
+            referencedRelation: "loteamentos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       proprietarios: {
         Row: {
@@ -292,6 +318,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_update_profile: {
+        Args: {
+          new_full_name: string
+          new_phone: string
+          target_user_id: string
+        }
+        Returns: undefined
+      }
+      apagar_msg_customizada: {
+        Args: { secret_token: string; telefone_alvo: string }
+        Returns: undefined
+      }
+      get_dados_aniversario: { Args: { secret_token: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -300,6 +339,10 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      update_lote_status: {
+        Args: { p_lote_id: string; p_status: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "coordenador" | "visitante"
