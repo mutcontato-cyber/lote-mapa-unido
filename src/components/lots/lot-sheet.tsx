@@ -30,18 +30,43 @@ const empty = (loteId: string): Partial<Proprietario> => ({
   assinatura_status: "nao_contatado",
 });
 
+interface Morador {
+  id?: string;
+  lote_id: string;
+  nome: string;
+  data_nascimento: string | null;
+  telefone: string | null;
+  created_by?: string | null;
+}
+
+const emptyMorador = (loteId: string): Morador => ({
+  lote_id: loteId,
+  nome: "",
+  data_nascimento: null,
+  telefone: null,
+});
+
 export function LotSheet({ lote, quadra, open, onOpenChange, onSaved }: Props) {
-  const { isStaff, profile } = useAuth();
+  const { isStaff, profile, user } = useAuth();
   const [props, setProps] = useState<Partial<Proprietario>[]>([]);
+  const [moradores, setMoradores] = useState<Morador[]>([]);
+  const [removedMoradoresIds, setRemovedMoradoresIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [obs, setObs] = useState(lote.observacoes ?? "");
 
   useEffect(() => {
     if (!open) return;
     setObs(lote.observacoes ?? "");
+    setRemovedMoradoresIds([]);
     (async () => {
       const { data } = await supabase.from("proprietarios").select("*").eq("lote_id", lote.id);
       setProps((data as Proprietario[]) ?? []);
+      const { data: mds } = await supabase
+        .from("moradores" as any)
+        .select("*")
+        .eq("lote_id", lote.id)
+        .order("created_at", { ascending: true });
+      setMoradores(((mds as unknown) as Morador[]) ?? []);
     })();
   }, [open, lote.id, lote.observacoes]);
 
