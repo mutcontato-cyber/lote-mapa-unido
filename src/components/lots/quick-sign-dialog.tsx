@@ -67,6 +67,7 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
       setConfirmado(null);
       setChefeCasa(false);
       setQtdMoradores("");
+      setOutrosMoradores([]);
       setMelhorias({});
     }
     if (!open) {
