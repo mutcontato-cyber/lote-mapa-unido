@@ -52,6 +52,7 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
   const [dataNascimento, setDataNascimento] = useState("");
   const [chefeCasa, setChefeCasa] = useState(false);
   const [qtdMoradores, setQtdMoradores] = useState<string>("");
+  const [outrosMoradores, setOutrosMoradores] = useState<{ nome: string; telefone: string; data_nascimento: string }[]>([]);
   const [melhorias, setMelhorias] = useState<Record<string, "sim" | "nao" | null>>({});
   const [tipoLote, setTipoLote] = useState<"inteiro" | "meio">("inteiro");
   const [loading, setLoading] = useState(false);
@@ -66,6 +67,7 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
       setConfirmado(null);
       setChefeCasa(false);
       setQtdMoradores("");
+      setOutrosMoradores([]);
       setMelhorias({});
     }
     if (!open) {
@@ -115,6 +117,16 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
       toast.error("Este lote já tem alguém cadastrado. Selecione 'Meio lote'.");
       return;
     }
+    const qtd = qtdMoradores ? Number(qtdMoradores) : 1;
+    if (qtd > 1) {
+      const invalido = outrosMoradores.some(
+        (m) => !m.nome.trim() || !m.telefone.trim() || !m.data_nascimento.trim(),
+      );
+      if (invalido) {
+        toast.error("Preencha nome, telefone/WhatsApp e data de nascimento de todas as pessoas.");
+        return;
+      }
+    }
     setLoading(true);
     try {
       const fracao = tipoLote === "inteiro" ? 100 : 50;
@@ -138,6 +150,20 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
 
       // recompute lot status (vai ficar verde)
       await recomputeLoteStatus(lote.id);
+
+      // Salvar dados das outras pessoas que moram no lote
+      if (outrosMoradores.length > 0) {
+        const rows = outrosMoradores.map((m) => ({
+          lote_id: lote.id,
+          nome: m.nome.trim(),
+          telefone: m.telefone.trim(),
+          data_nascimento: m.data_nascimento || null,
+          created_by: user?.id ?? null,
+        }));
+        const { error: morErr } = await supabase.from("moradores" as any).insert(rows);
+        if (morErr) throw morErr;
+      }
+
 
       // Mensagem para o morador enviar pro admin
       const linhasMelhorias = MELHORIAS_OPCOES
@@ -321,11 +347,79 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
                 min={1}
                 max={30}
                 value={qtdMoradores}
-                onChange={(e) => setQtdMoradores(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setQtdMoradores(val);
+                  const count = Math.max(0, Math.min(30, Number(val) || 0));
+                  const others = Math.max(0, count - 1);
+                  setOutrosMoradores((prev) => {
+                    const next = prev.slice(0, others);
+                    while (next.length < others) {
+                      next.push({ nome: "", telefone: "", data_nascimento: "" });
+                    }
+                    return next;
+                  });
+                }}
                 placeholder="Ex.: 4"
               />
             </div>
           </div>
+
+          {outrosMoradores.length > 0 && (
+            <div className="space-y-3 rounded-md border p-3">
+              <Label className="text-xs font-semibold">Dados das outras pessoas que moram na casa</Label>
+              <p className="text-[11px] text-muted-foreground -mt-1">
+                Nome, telefone/WhatsApp e data de nascimento são obrigatórios.
+              </p>
+              {outrosMoradores.map((m, i) => (
+                <div key={i} className="border rounded-lg p-3 bg-muted/20 space-y-3">
+                  <div className="text-sm font-medium">Pessoa {i + 2}</div>
+                  <div>
+                    <Label className="text-xs">Nome completo *</Label>
+                    <Input
+                      value={m.nome}
+                      onChange={(e) =>
+                        setOutrosMoradores((arr) =>
+                          arr.map((item, idx) => (idx === i ? { ...item, nome: e.target.value } : item))
+                        )
+                      }
+                      placeholder="Nome completo"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Telefone / WhatsApp *</Label>
+                      <Input
+                        value={m.telefone}
+                        onChange={(e) =>
+                          setOutrosMoradores((arr) =>
+                            arr.map((item, idx) => (idx === i ? { ...item, telefone: e.target.value } : item))
+                          )
+                        }
+                        placeholder="(62) 9 9999-9999"
+                        inputMode="tel"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Data de nascimento *</Label>
+                      <Input
+                        type="date"
+                        value={m.data_nascimento}
+                        onChange={(e) =>
+                          setOutrosMoradores((arr) =>
+                            arr.map((item, idx) =>
+                              idx === i ? { ...item, data_nascimento: e.target.value } : item
+                            )
+                          )
+                        }
+                        max={new Date().toISOString().slice(0, 10)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="space-y-2 rounded-md border p-3">
             <Label className="text-xs font-semibold">
