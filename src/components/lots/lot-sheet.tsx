@@ -88,38 +88,58 @@ export function LotSheet({ lote, quadra, open, onOpenChange, onSaved }: Props) {
   }
 
   async function save() {
-    if (!isStaff) return;
     if (total > 100.01) {
       toast.error("A soma das frações não pode passar de 100%");
       return;
     }
     setLoading(true);
     try {
-      for (const p of props) {
-        if (!p.nome || !p.nome.trim()) continue;
-        const payload = {
+      if (isStaff) {
+        for (const p of props) {
+          if (!p.nome || !p.nome.trim()) continue;
+          const payload = {
+            lote_id: lote.id,
+            fracao: Number(p.fracao ?? 100),
+            nome: p.nome.trim(),
+            cpf: p.cpf ?? null,
+            telefone: p.telefone ?? null,
+            whatsapp: p.whatsapp ?? null,
+            email: p.email ?? null,
+            endereco: p.endereco ?? null,
+            situacao: p.situacao ?? null,
+            apoia_asfalto: p.apoia_asfalto ?? null,
+            assinatura_status: p.assinatura_status ?? "nao_contatado",
+            responsavel_cadastro: p.responsavel_cadastro ?? profile?.full_name ?? null,
+            observacoes: p.observacoes ?? null,
+          };
+          if (p.id) {
+            await supabase.from("proprietarios").update(payload).eq("id", p.id);
+          } else {
+            await supabase.from("proprietarios").insert(payload);
+          }
+        }
+        await supabase.from("lotes").update({ observacoes: obs || null }).eq("id", lote.id);
+        await recomputeLoteStatus(lote.id);
+      }
+
+      // Moradores podem ser cadastrados por qualquer usuário autenticado
+      for (const id of removedMoradoresIds) {
+        await supabase.from("moradores" as any).delete().eq("id", id);
+      }
+      for (const m of moradores) {
+        if (!m.nome.trim()) continue;
+        const payload: any = {
           lote_id: lote.id,
-          fracao: Number(p.fracao ?? 100),
-          nome: p.nome.trim(),
-          cpf: p.cpf ?? null,
-          telefone: p.telefone ?? null,
-          whatsapp: p.whatsapp ?? null,
-          email: p.email ?? null,
-          endereco: p.endereco ?? null,
-          situacao: p.situacao ?? null,
-          apoia_asfalto: p.apoia_asfalto ?? null,
-          assinatura_status: p.assinatura_status ?? "nao_contatado",
-          responsavel_cadastro: p.responsavel_cadastro ?? profile?.full_name ?? null,
-          observacoes: p.observacoes ?? null,
+          nome: m.nome.trim(),
+          data_nascimento: m.data_nascimento || null,
+          telefone: m.telefone || null,
         };
-        if (p.id) {
-          await supabase.from("proprietarios").update(payload).eq("id", p.id);
+        if (m.id) {
+          await supabase.from("moradores" as any).update(payload).eq("id", m.id);
         } else {
-          await supabase.from("proprietarios").insert(payload);
+          await supabase.from("moradores" as any).insert({ ...payload, created_by: user?.id ?? null });
         }
       }
-      await supabase.from("lotes").update({ observacoes: obs || null }).eq("id", lote.id);
-      await recomputeLoteStatus(lote.id);
       toast.success("Cadastro salvo");
       onSaved?.();
       onOpenChange(false);
@@ -128,6 +148,18 @@ export function LotSheet({ lote, quadra, open, onOpenChange, onSaved }: Props) {
     } finally {
       setLoading(false);
     }
+  }
+
+  function addMorador() {
+    setMoradores((arr) => [...arr, emptyMorador(lote.id)]);
+  }
+  function updateMorador(i: number, patch: Partial<Morador>) {
+    setMoradores((arr) => arr.map((m, idx) => (idx === i ? { ...m, ...patch } : m)));
+  }
+  function removeMorador(i: number) {
+    const m = moradores[i];
+    if (m.id) setRemovedMoradoresIds((arr) => [...arr, m.id!]);
+    setMoradores((arr) => arr.filter((_, idx) => idx !== i));
   }
 
   const fracoesPreview = props
