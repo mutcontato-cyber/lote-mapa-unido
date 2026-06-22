@@ -103,6 +103,47 @@ export type Database = {
         }
         Relationships: []
       }
+      moradores: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_nascimento: string | null
+          id: string
+          lote_id: string
+          nome: string
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_nascimento?: string | null
+          id?: string
+          lote_id: string
+          nome: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_nascimento?: string | null
+          id?: string
+          lote_id?: string
+          nome?: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moradores_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "lotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       password_resets: {
         Row: {
           fulfilled_at: string | null
