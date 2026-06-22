@@ -323,7 +323,19 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
                 min={1}
                 max={30}
                 value={qtdMoradores}
-                onChange={(e) => setQtdMoradores(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setQtdMoradores(val);
+                  const count = Math.max(0, Math.min(30, Number(val) || 0));
+                  const others = Math.max(0, count - 1);
+                  setOutrosMoradores((prev) => {
+                    const next = prev.slice(0, others);
+                    while (next.length < others) {
+                      next.push({ nome: "", telefone: "", data_nascimento: "" });
+                    }
+                    return next;
+                  });
+                }}
                 placeholder="Ex.: 4"
               />
             </div>
