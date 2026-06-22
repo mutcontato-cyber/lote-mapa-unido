@@ -52,6 +52,7 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
   const [dataNascimento, setDataNascimento] = useState("");
   const [chefeCasa, setChefeCasa] = useState(false);
   const [qtdMoradores, setQtdMoradores] = useState<string>("");
+  const [outrosMoradores, setOutrosMoradores] = useState<{ nome: string; telefone: string; data_nascimento: string }[]>([]);
   const [melhorias, setMelhorias] = useState<Record<string, "sim" | "nao" | null>>({});
   const [tipoLote, setTipoLote] = useState<"inteiro" | "meio">("inteiro");
   const [loading, setLoading] = useState(false);
