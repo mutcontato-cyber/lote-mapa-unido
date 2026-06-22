@@ -311,50 +311,56 @@ export function LotSheet({ lote, quadra, open, onOpenChange, onSaved }: Props) {
         <div className="space-y-3 border-t pt-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold">Moradores da residência</h3>
+              <h3 className="font-semibold">Pessoas na casa</h3>
               <p className="text-xs text-muted-foreground">
-                Cadastre todos os moradores que vivem neste lote (nome, data de nascimento e telefone).
+                Cadastre todos que moram neste lote. Nome, telefone/WhatsApp e data de nascimento são obrigatórios.
               </p>
             </div>
             <Button size="sm" variant="outline" onClick={addMorador}>
-              <Plus className="h-4 w-4 mr-1" /> Adicionar morador
+              <Plus className="h-4 w-4 mr-1" /> Adicionar pessoa
             </Button>
           </div>
           {moradores.length === 0 && (
             <div className="text-sm text-muted-foreground italic border rounded-md p-4 text-center">
-              Nenhum morador cadastrado. Clique em "Adicionar morador" para começar.
+              Nenhuma pessoa cadastrada. Clique em "Adicionar pessoa" para começar.
             </div>
           )}
           {moradores.map((m, i) => (
             <div key={m.id ?? `new-${i}`} className="border rounded-lg p-3 bg-muted/20">
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_180px_180px_auto] gap-3 items-end">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium">Pessoa {i + 1}</h4>
+                <Button variant="ghost" size="icon" onClick={() => removeMorador(i)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <Label className="text-xs">Nome completo *</Label>
                   <Input
                     value={m.nome}
                     onChange={(e) => updateMorador(i, { nome: e.target.value })}
-                    placeholder="Nome do morador"
+                    placeholder="Nome da pessoa"
+                    required
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Data de nascimento</Label>
+                  <Label className="text-xs">Data de nascimento *</Label>
                   <Input
                     type="date"
                     value={m.data_nascimento ?? ""}
                     onChange={(e) => updateMorador(i, { data_nascimento: e.target.value || null })}
+                    required
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Telefone</Label>
+                  <Label className="text-xs">Telefone / WhatsApp *</Label>
                   <Input
                     value={m.telefone ?? ""}
                     onChange={(e) => updateMorador(i, { telefone: e.target.value })}
                     placeholder="(00) 00000-0000"
+                    required
                   />
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => removeMorador(i)}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
               </div>
             </div>
           ))}
