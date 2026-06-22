@@ -88,6 +88,9 @@ function AdminPage() {
   const sendEvolutionFn = useServerFn(sendEvolutionWhatsApp);
 
   const [bdayModalOpen, setBdayModalOpen] = useState(false);
+  const [bdayUser, setBdayUser] = useState<{ id?: string; nome: string; whatsapp: string } | null>(null);
+  const [bdayMessage, setBdayMessage] = useState("");
+  const [sendingBday, setSendingBday] = useState(false);
 
   const [editUserOpen, setEditUserOpen] = useState(false);
   const [editUser, setEditUser] = useState<{ id: string; full_name: string; phone: string } | null>(null);

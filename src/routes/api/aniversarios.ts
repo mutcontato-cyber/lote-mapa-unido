@@ -1,6 +1,11 @@
-import { json } from '@tanstack/react-start';
-import { createAPIFileRoute } from '@tanstack/react-start/api';
+import { createFileRoute } from '@tanstack/react-router';
 import { createClient } from '@supabase/supabase-js';
+
+const json = (data: unknown, init?: ResponseInit) =>
+  new Response(JSON.stringify(data), {
+    ...init,
+    headers: { 'content-type': 'application/json', ...(init?.headers || {}) },
+  });
 
 function parseBday(dateStr: string | null | undefined) {
   if (!dateStr) return null;
@@ -23,10 +28,12 @@ function parseBday(dateStr: string | null | undefined) {
   return { mes, dia };
 }
 
-export const APIRoute = createAPIFileRoute('/api/aniversarios')({
-  GET: async ({ request }) => {
+export const Route = createFileRoute('/api/aniversarios')({
+  server: {
+    handlers: {
+      GET: async ({ request }: { request: Request }) => {
     // 1. Verificar senha de segurança passada na URL (para ninguém rodar isso sem querer)
-    const url = new URL(request.url);
+        const url = new URL(request.url);
     const token = url.searchParams.get("token");
     if (token !== "minhasenha123") {
       return json({ error: "Acesso negado." }, { status: 401 });
@@ -128,10 +135,12 @@ export const APIRoute = createAPIFileRoute('/api/aniversarios')({
         }
       }
 
-      return json({ message: "Processado com sucesso", results });
+        return json({ message: "Processado com sucesso", results });
 
-    } catch (err: any) {
-      return json({ error: err.message }, { status: 500 });
-    }
+      } catch (err: any) {
+        return json({ error: err.message }, { status: 500 });
+      }
+      },
+    },
   },
 });

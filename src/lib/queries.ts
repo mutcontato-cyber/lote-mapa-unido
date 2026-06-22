@@ -13,6 +13,7 @@ export interface Quadra {
   nome: string;
   ordem: number;
   observacoes: string | null;
+  melhorias: Record<string, string> | null;
 }
 
 export interface Lote {
