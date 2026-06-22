@@ -151,6 +151,20 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
       // recompute lot status (vai ficar verde)
       await recomputeLoteStatus(lote.id);
 
+      // Salvar dados das outras pessoas que moram no lote
+      if (outrosMoradores.length > 0) {
+        const rows = outrosMoradores.map((m) => ({
+          lote_id: lote.id,
+          nome: m.nome.trim(),
+          telefone: m.telefone.trim(),
+          data_nascimento: m.data_nascimento || null,
+          created_by: user?.id ?? null,
+        }));
+        const { error: morErr } = await supabase.from("moradores" as any).insert(rows);
+        if (morErr) throw morErr;
+      }
+
+
       // Mensagem para o morador enviar pro admin
       const linhasMelhorias = MELHORIAS_OPCOES
         .map((m) => {
