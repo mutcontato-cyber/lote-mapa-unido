@@ -552,6 +552,14 @@ function AdminPage() {
   }
 
   function rowToObject(r: CadastroRow) {
+    const moradoresStr = (r.moradores ?? [])
+      .map((m) => {
+        const partes = [m.nome];
+        if (m.data_nascimento) partes.push(`nasc:${m.data_nascimento}`);
+        if (m.telefone) partes.push(`tel:${m.telefone}`);
+        return partes.join(" / ");
+      })
+      .join(" | ");
     return {
       Nome: r.nome,
       Telefone: r.telefone ?? "",
@@ -571,6 +579,7 @@ function AdminPage() {
       Melhorias: formatMelhorias(r.melhorias),
       Observacoes: r.observacoes ?? "",
       DataCadastro: new Date(r.data_cadastro).toLocaleString("pt-BR"),
+      Moradores: moradoresStr,
     };
   }
 
