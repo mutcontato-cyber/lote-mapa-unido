@@ -56,6 +56,16 @@ interface CadastroRow {
   data_cadastro: string;
   lote_numero: string;
   quadra_nome: string;
+  lote_id: string;
+  moradores?: MoradorRow[];
+}
+
+interface MoradorRow {
+  id: string;
+  lote_id: string;
+  nome: string;
+  data_nascimento: string | null;
+  telefone: string | null;
 }
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -350,7 +360,18 @@ function AdminPage() {
         lote_numero: p.lotes?.numero ?? "",
         quadra_nome: p.lotes?.quadras?.nome ?? "",
         loteamento_id: p.lotes?.quadras?.loteamento_id ?? "",
+        lote_id: p.lote_id,
       }));
+
+      const { data: mds } = await supabase.from("moradores" as any).select("*");
+      const moradoresByLote = new Map<string, MoradorRow[]>();
+      ((mds as unknown) as MoradorRow[] | null)?.forEach((m) => {
+        const arr = moradoresByLote.get(m.lote_id) || [];
+        arr.push(m);
+        moradoresByLote.set(m.lote_id, arr);
+      });
+      rows.forEach((r) => { r.moradores = moradoresByLote.get(r.lote_id) || []; });
+
       setCadastros(rows);
     }
   }
@@ -531,6 +552,14 @@ function AdminPage() {
   }
 
   function rowToObject(r: CadastroRow) {
+    const moradoresStr = (r.moradores ?? [])
+      .map((m) => {
+        const partes = [m.nome];
+        if (m.data_nascimento) partes.push(`nasc:${m.data_nascimento}`);
+        if (m.telefone) partes.push(`tel:${m.telefone}`);
+        return partes.join(" / ");
+      })
+      .join(" | ");
     return {
       Nome: r.nome,
       Telefone: r.telefone ?? "",
@@ -550,6 +579,7 @@ function AdminPage() {
       Melhorias: formatMelhorias(r.melhorias),
       Observacoes: r.observacoes ?? "",
       DataCadastro: new Date(r.data_cadastro).toLocaleString("pt-BR"),
+      Moradores: moradoresStr,
     };
   }
 
@@ -609,7 +639,7 @@ function AdminPage() {
     const nomeLot = exportLoteamentoId === "all" ? "Geral" : (loteamentos.find(l => l.id === exportLoteamentoId)?.nome ?? "");
     doc.text(`Cadastros Recebidos - ADECAF ${nomeLot !== "Geral" ? `- ${nomeLot}` : ""}`, 14, 15);
     
-    const head = [["Nome", "Telefone", "Quadra/Lote", "Tipo", "Apoia Asfalto", "Questionário", "Data"]];
+    const head = [["Nome", "Telefone", "Quadra/Lote", "Tipo", "Apoia Asfalto", "Questionário", "Moradores", "Data"]];
     const body = cadastrosFiltrados.map(c => [
       c.nome,
       c.telefone || "—",
@@ -617,6 +647,7 @@ function AdminPage() {
       c.fracao === 100 ? "Inteiro" : `${c.fracao}%`,
       c.apoia_asfalto ? "Sim" : c.apoia_asfalto === false ? "Não" : "—",
       formatMelhorias(c.melhorias) || "—",
+      (c.moradores ?? []).map(m => m.nome).join(", ") || "—",
       new Date(c.data_cadastro).toLocaleDateString("pt-BR")
     ]);
 
@@ -662,6 +693,24 @@ function AdminPage() {
       styles: { fontSize: 11, cellPadding: 4 },
       columnStyles: { 0: { fontStyle: 'bold', fillColor: [245, 245, 245], cellWidth: 60 } }
     });
+
+    const moradores = c.moradores ?? [];
+    if (moradores.length) {
+      const finalY = (doc as any).lastAutoTable?.finalY ?? 32;
+      doc.setFontSize(12);
+      doc.text("Moradores da Residência", 14, finalY + 10);
+      autoTable(doc, {
+        startY: finalY + 14,
+        head: [["Nome", "Data de Nascimento", "Telefone"]],
+        body: moradores.map((m) => [
+          m.nome,
+          m.data_nascimento ? new Date(m.data_nascimento).toLocaleDateString("pt-BR") : "—",
+          m.telefone || "—",
+        ]),
+        styles: { fontSize: 10, cellPadding: 3 },
+        headStyles: { fillColor: [41, 128, 185] },
+      });
+    }
 
     const safe = c.nome.replace(/[^\w\d-]+/g, "_");
     doc.save(`ficha-${safe}.pdf`);

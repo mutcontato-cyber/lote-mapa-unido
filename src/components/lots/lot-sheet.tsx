@@ -30,18 +30,43 @@ const empty = (loteId: string): Partial<Proprietario> => ({
   assinatura_status: "nao_contatado",
 });
 
+interface Morador {
+  id?: string;
+  lote_id: string;
+  nome: string;
+  data_nascimento: string | null;
+  telefone: string | null;
+  created_by?: string | null;
+}
+
+const emptyMorador = (loteId: string): Morador => ({
+  lote_id: loteId,
+  nome: "",
+  data_nascimento: null,
+  telefone: null,
+});
+
 export function LotSheet({ lote, quadra, open, onOpenChange, onSaved }: Props) {
-  const { isStaff, profile } = useAuth();
+  const { isStaff, profile, user } = useAuth();
   const [props, setProps] = useState<Partial<Proprietario>[]>([]);
+  const [moradores, setMoradores] = useState<Morador[]>([]);
+  const [removedMoradoresIds, setRemovedMoradoresIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [obs, setObs] = useState(lote.observacoes ?? "");
 
   useEffect(() => {
     if (!open) return;
     setObs(lote.observacoes ?? "");
+    setRemovedMoradoresIds([]);
     (async () => {
       const { data } = await supabase.from("proprietarios").select("*").eq("lote_id", lote.id);
       setProps((data as Proprietario[]) ?? []);
+      const { data: mds } = await supabase
+        .from("moradores" as any)
+        .select("*")
+        .eq("lote_id", lote.id)
+        .order("created_at", { ascending: true });
+      setMoradores(((mds as unknown) as Morador[]) ?? []);
     })();
   }, [open, lote.id, lote.observacoes]);
 
@@ -63,38 +88,58 @@ export function LotSheet({ lote, quadra, open, onOpenChange, onSaved }: Props) {
   }
 
   async function save() {
-    if (!isStaff) return;
     if (total > 100.01) {
       toast.error("A soma das frações não pode passar de 100%");
       return;
     }
     setLoading(true);
     try {
-      for (const p of props) {
-        if (!p.nome || !p.nome.trim()) continue;
-        const payload = {
+      if (isStaff) {
+        for (const p of props) {
+          if (!p.nome || !p.nome.trim()) continue;
+          const payload = {
+            lote_id: lote.id,
+            fracao: Number(p.fracao ?? 100),
+            nome: p.nome.trim(),
+            cpf: p.cpf ?? null,
+            telefone: p.telefone ?? null,
+            whatsapp: p.whatsapp ?? null,
+            email: p.email ?? null,
+            endereco: p.endereco ?? null,
+            situacao: p.situacao ?? null,
+            apoia_asfalto: p.apoia_asfalto ?? null,
+            assinatura_status: p.assinatura_status ?? "nao_contatado",
+            responsavel_cadastro: p.responsavel_cadastro ?? profile?.full_name ?? null,
+            observacoes: p.observacoes ?? null,
+          };
+          if (p.id) {
+            await supabase.from("proprietarios").update(payload).eq("id", p.id);
+          } else {
+            await supabase.from("proprietarios").insert(payload);
+          }
+        }
+        await supabase.from("lotes").update({ observacoes: obs || null }).eq("id", lote.id);
+        await recomputeLoteStatus(lote.id);
+      }
+
+      // Moradores podem ser cadastrados por qualquer usuário autenticado
+      for (const id of removedMoradoresIds) {
+        await supabase.from("moradores" as any).delete().eq("id", id);
+      }
+      for (const m of moradores) {
+        if (!m.nome.trim()) continue;
+        const payload: any = {
           lote_id: lote.id,
-          fracao: Number(p.fracao ?? 100),
-          nome: p.nome.trim(),
-          cpf: p.cpf ?? null,
-          telefone: p.telefone ?? null,
-          whatsapp: p.whatsapp ?? null,
-          email: p.email ?? null,
-          endereco: p.endereco ?? null,
-          situacao: p.situacao ?? null,
-          apoia_asfalto: p.apoia_asfalto ?? null,
-          assinatura_status: p.assinatura_status ?? "nao_contatado",
-          responsavel_cadastro: p.responsavel_cadastro ?? profile?.full_name ?? null,
-          observacoes: p.observacoes ?? null,
+          nome: m.nome.trim(),
+          data_nascimento: m.data_nascimento || null,
+          telefone: m.telefone || null,
         };
-        if (p.id) {
-          await supabase.from("proprietarios").update(payload).eq("id", p.id);
+        if (m.id) {
+          await supabase.from("moradores" as any).update(payload).eq("id", m.id);
         } else {
-          await supabase.from("proprietarios").insert(payload);
+          await supabase.from("moradores" as any).insert({ ...payload, created_by: user?.id ?? null });
         }
       }
-      await supabase.from("lotes").update({ observacoes: obs || null }).eq("id", lote.id);
-      await recomputeLoteStatus(lote.id);
       toast.success("Cadastro salvo");
       onSaved?.();
       onOpenChange(false);
@@ -103,6 +148,18 @@ export function LotSheet({ lote, quadra, open, onOpenChange, onSaved }: Props) {
     } finally {
       setLoading(false);
     }
+  }
+
+  function addMorador() {
+    setMoradores((arr) => [...arr, emptyMorador(lote.id)]);
+  }
+  function updateMorador(i: number, patch: Partial<Morador>) {
+    setMoradores((arr) => arr.map((m, idx) => (idx === i ? { ...m, ...patch } : m)));
+  }
+  function removeMorador(i: number) {
+    const m = moradores[i];
+    if (m.id) setRemovedMoradoresIds((arr) => [...arr, m.id!]);
+    setMoradores((arr) => arr.filter((_, idx) => idx !== i));
   }
 
   const fracoesPreview = props
@@ -251,13 +308,63 @@ export function LotSheet({ lote, quadra, open, onOpenChange, onSaved }: Props) {
           <Textarea rows={2} value={obs} onChange={(e) => setObs(e.target.value)} disabled={!isStaff} />
         </div>
 
+        <div className="space-y-3 border-t pt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold">Moradores da residência</h3>
+              <p className="text-xs text-muted-foreground">
+                Cadastre todos os moradores que vivem neste lote (nome, data de nascimento e telefone).
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={addMorador}>
+              <Plus className="h-4 w-4 mr-1" /> Adicionar morador
+            </Button>
+          </div>
+          {moradores.length === 0 && (
+            <div className="text-sm text-muted-foreground italic border rounded-md p-4 text-center">
+              Nenhum morador cadastrado. Clique em "Adicionar morador" para começar.
+            </div>
+          )}
+          {moradores.map((m, i) => (
+            <div key={m.id ?? `new-${i}`} className="border rounded-lg p-3 bg-muted/20">
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_180px_180px_auto] gap-3 items-end">
+                <div>
+                  <Label className="text-xs">Nome completo *</Label>
+                  <Input
+                    value={m.nome}
+                    onChange={(e) => updateMorador(i, { nome: e.target.value })}
+                    placeholder="Nome do morador"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Data de nascimento</Label>
+                  <Input
+                    type="date"
+                    value={m.data_nascimento ?? ""}
+                    onChange={(e) => updateMorador(i, { data_nascimento: e.target.value || null })}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Telefone</Label>
+                  <Input
+                    value={m.telefone ?? ""}
+                    onChange={(e) => updateMorador(i, { telefone: e.target.value })}
+                    placeholder="(00) 00000-0000"
+                  />
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => removeMorador(i)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
-          {isStaff && (
-            <Button onClick={save} disabled={loading}>
-              {loading ? "Salvando…" : "Salvar"}
-            </Button>
-          )}
+          <Button onClick={save} disabled={loading}>
+            {loading ? "Salvando…" : "Salvar"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
