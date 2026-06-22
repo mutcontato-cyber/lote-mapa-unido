@@ -639,7 +639,7 @@ function AdminPage() {
     const nomeLot = exportLoteamentoId === "all" ? "Geral" : (loteamentos.find(l => l.id === exportLoteamentoId)?.nome ?? "");
     doc.text(`Cadastros Recebidos - ADECAF ${nomeLot !== "Geral" ? `- ${nomeLot}` : ""}`, 14, 15);
     
-    const head = [["Nome", "Telefone", "Quadra/Lote", "Tipo", "Apoia Asfalto", "Questionário", "Data"]];
+    const head = [["Nome", "Telefone", "Quadra/Lote", "Tipo", "Apoia Asfalto", "Questionário", "Moradores", "Data"]];
     const body = cadastrosFiltrados.map(c => [
       c.nome,
       c.telefone || "—",
@@ -647,6 +647,7 @@ function AdminPage() {
       c.fracao === 100 ? "Inteiro" : `${c.fracao}%`,
       c.apoia_asfalto ? "Sim" : c.apoia_asfalto === false ? "Não" : "—",
       formatMelhorias(c.melhorias) || "—",
+      (c.moradores ?? []).map(m => m.nome).join(", ") || "—",
       new Date(c.data_cadastro).toLocaleDateString("pt-BR")
     ]);
 
