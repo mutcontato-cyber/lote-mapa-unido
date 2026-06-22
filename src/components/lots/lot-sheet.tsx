@@ -123,19 +123,11 @@ export function LotSheet({ lote, quadra, open, onOpenChange, onSaved }: Props) {
       }
 
       // Moradores podem ser cadastrados por qualquer usuário autenticado
-      const invalidMorador = moradores.find(
-        (m) => !m.nome.trim() || !m.telefone?.trim() || !m.data_nascimento?.trim(),
-      );
-      if (invalidMorador) {
-        toast.error("Preencha nome, telefone/WhatsApp e data de nascimento de todas as pessoas.");
-        setLoading(false);
-        return;
-      }
-
       for (const id of removedMoradoresIds) {
         await supabase.from("moradores" as any).delete().eq("id", id);
       }
       for (const m of moradores) {
+        if (!m.nome.trim()) continue;
         const payload: any = {
           lote_id: lote.id,
           nome: m.nome.trim(),
