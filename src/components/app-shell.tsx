@@ -23,6 +23,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
 
   async function handleSignOut() {
+    localStorage.removeItem("adecaf_loteamento_lock");
     await signOut();
     nav({ to: "/auth" });
   }

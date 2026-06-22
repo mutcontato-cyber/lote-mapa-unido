@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Info, CheckCircle2, MessageCircle } from "lucide-react";
+import { Info, CheckCircle2, MessageCircle, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Lote, Quadra, Proprietario } from "@/lib/queries";
@@ -39,12 +39,13 @@ interface Props {
   lote: Lote;
   quadra: Quadra;
   proprietarios: Proprietario[];
+  allProps?: Proprietario[];
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onSaved?: () => void;
 }
 
-export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChange, onSaved }: Props) {
+export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], open, onOpenChange, onSaved }: Props) {
   const { profile, user, isStaff } = useAuth();
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
@@ -87,12 +88,23 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
     }
   }, [open, disponivelInteiro, disponivelMeio]);
 
-  // Já cadastrou neste lote? (mesmo user_id no profile e mesmo telefone)
+  // Já cadastrou neste lote?
   const jaCadastradoAqui = !!user && proprietarios.some((p) => p.telefone === profile?.phone);
+  // Já cadastrou em QUALQUER lote no sistema?
+  const jaCadastradoGlobal = !!user && allProps.some((p) => p.telefone === profile?.phone);
 
   async function handleSign() {
     if (!nome.trim() || !telefone.trim()) {
       toast.error("Preencha nome e telefone");
+      return;
+    }
+    if (jaCadastradoGlobal && !isStaff) {
+      toast.error("Você já possui um cadastro registrado no sistema. Cada morador só pode preencher uma vez.");
+      return;
+    }
+    const totalRespostas = Object.values(melhorias).filter(v => v !== null).length;
+    if (totalRespostas < MELHORIAS_OPCOES.length) {
+      toast.error(`Por favor, responda a todas as opções da pesquisa (${totalRespostas}/${MELHORIAS_OPCOES.length}).`);
       return;
     }
     if (!disponivelInteiro && !disponivelMeio) {
@@ -166,6 +178,22 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
 
   const jaApoiam = proprietarios.filter((p) => p.apoia_asfalto !== false);
 
+  async function excluirProprietario(id: string) {
+    if (!confirm("Tem certeza que deseja remover este morador do lote?")) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.from("proprietarios").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Cadastro do lote removido!");
+      await recomputeLoteStatus(lote.id);
+      onSaved?.();
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao excluir");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
@@ -194,9 +222,6 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
                 <MessageCircle className="h-4 w-4 mr-2" />
                 Enviar confirmação no WhatsApp
               </Button>
-              <Button variant="ghost" className="w-full" onClick={() => onOpenChange(false)}>
-                Fechar (enviar depois)
-              </Button>
             </DialogFooter>
           </div>
         ) : (
@@ -207,18 +232,43 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
               <CheckCircle2 className="h-4 w-4 text-[var(--status-confirmado)]" />
               Já apoiam este lote:
             </div>
-            <ul className="text-muted-foreground space-y-0.5">
+            <ul className="text-muted-foreground space-y-2 mt-3">
               {jaApoiam.map((p) => (
-                <li key={p.id}>• {p.nome}{p.fracao && p.fracao !== 100 ? ` (${p.fracao}%)` : ""}</li>
+                <li key={p.id} className="flex flex-col border-b border-border/50 pb-2 last:border-0 last:pb-0">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-foreground">• {p.nome}{p.fracao && p.fracao !== 100 ? ` (${p.fracao}%)` : ""}</span>
+                    {isStaff && (
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => excluirProprietario(p.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                  {isStaff && p.melhorias && Object.keys(p.melhorias).length > 0 && (
+                    <div className="pl-3 mt-1.5 grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] text-muted-foreground/80">
+                      {MELHORIAS_OPCOES.map(m => {
+                        const val = (p.melhorias as Record<string, string>)[m.key];
+                        if (!val) return null;
+                        return (
+                          <div key={m.key} className="flex items-center gap-1">
+                            <span>{m.label}:</span>
+                            <strong className={val === 'sim' ? 'text-green-600' : 'text-red-500/80'}>
+                              {val === 'sim' ? 'Precisa' : 'Não'}
+                            </strong>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </li>
               ))}
             </ul>
           </div>
         )}
 
-        {jaCadastradoAqui && (
+        {jaCadastradoGlobal && !isStaff && (
           <Alert variant="destructive">
             <AlertDescription className="text-xs">
-              Você já tem cadastro neste lote.
+              Você já possui um cadastro no sistema. Cada morador só pode preencher 1 vez em apenas um lote.
             </AlertDescription>
           </Alert>
         )}
@@ -341,7 +391,7 @@ export function QuickSignDialog({ lote, quadra, proprietarios, open, onOpenChang
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancelar
           </Button>
-          <Button onClick={handleSign} disabled={loading || jaCadastradoAqui}>
+          <Button onClick={handleSign} disabled={loading || (jaCadastradoGlobal && !isStaff)}>
             {loading ? "Enviando…" : "Confirmar apoio 💚"}
           </Button>
         </DialogFooter>

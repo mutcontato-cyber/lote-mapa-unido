@@ -92,6 +92,9 @@ export function deriveStatus(props: Proprietario[]): LoteStatus {
 export async function recomputeLoteStatus(loteId: string) {
   const { data: props } = await supabase.from("proprietarios").select("*").eq("lote_id", loteId);
   const status = deriveStatus((props ?? []) as Proprietario[]);
-  await supabase.from("lotes").update({ status }).eq("id", loteId);
+  await supabase.rpc('update_lote_status', {
+    p_lote_id: loteId,
+    p_status: status
+  });
   return status;
 }

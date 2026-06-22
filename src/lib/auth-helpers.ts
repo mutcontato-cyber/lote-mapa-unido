@@ -21,6 +21,7 @@ export async function signUpWithPhonePassword(
   password: string,
   termoTexto?: string,
   dataNascimento?: string,
+  loteamentoId?: string,
 ) {
   const email = emailForPhone(phone);
   const { data, error } = await supabase.auth.signUp({
@@ -37,14 +38,14 @@ export async function signUpWithPhonePassword(
   });
   if (error) throw error;
 
-  // Registra aceite do termo no profile
-  if (data.user && termoTexto) {
+  // Registra aceite do termo e loteamento vinculado no profile
+  if (data.user) {
     await supabase
       .from("profiles")
       .update({
-        aceite_termo_at: new Date().toISOString(),
-        aceite_termo_texto: termoTexto,
+        ...(termoTexto ? { aceite_termo_at: new Date().toISOString(), aceite_termo_texto: termoTexto } : {}),
         ...(dataNascimento ? { data_nascimento: dataNascimento } : {}),
+        ...(loteamentoId ? { loteamento_id: loteamentoId } : {}),
       })
       .eq("id", data.user.id);
   }

@@ -5,19 +5,45 @@ import { STATUS_LABEL, type LoteStatus } from "@/components/lots/lot-tile";
 import { QuickSignDialog } from "@/components/lots/quick-sign-dialog";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { fetchLoteamentos, fetchLotes, fetchProprietarios, fetchQuadras, type Loteamento, type Lote, type Proprietario, type Quadra } from "@/lib/queries";
+import { fetchLoteamentos, fetchLotes, fetchProprietarios, fetchQuadras, deriveStatus, type Loteamento, type Lote, type Proprietario, type Quadra } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Search } from "lucide-react";
 import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/hooks/use-auth";
+
+const LOTEAMENTO_LOCK_KEY = "adecaf_loteamento_lock"; // mantido apenas como fallback temp
 
 export const Route = createFileRoute("/_authenticated/mapa")({
   head: () => ({ meta: [{ title: "Mapa do Loteamento — ADECAF Rua Digna" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({ loteamento: search.loteamento as string | undefined }),
   component: MapaPage,
 });
 
 function MapaPage() {
+  const { loteamento: loteamentoParam } = Route.useSearch();
+  const { isStaff, profile, loading: authLoading } = useAuth();
+
+  // Fonte de verdade: perfil do banco > query param > localStorage (fallback)
+  const profileLock = profile?.loteamento_id ?? null;
+  const lockedId = !isStaff
+    ? (profileLock || loteamentoParam || localStorage.getItem(LOTEAMENTO_LOCK_KEY) || null)
+    : null;
+  const isLocked = !!lockedId;
+
+  // Quando vem via link E ainda nao tem loteamento no perfil, salva no localStorage como temp
+  // (será gravado definitivamente no perfil pelo auth.tsx no cadastro)
+  useEffect(() => {
+    if (loteamentoParam && !isStaff && !profileLock) {
+      localStorage.setItem(LOTEAMENTO_LOCK_KEY, loteamentoParam);
+    }
+    // Se já tem no perfil, limpa o localStorage (não precisa mais)
+    if (profileLock) {
+      localStorage.removeItem(LOTEAMENTO_LOCK_KEY);
+    }
+  }, [loteamentoParam, isStaff, profileLock]);
+
   const [loteamentos, setLoteamentos] = useState<Loteamento[]>([]);
   const [loteamentoId, setLoteamentoId] = useState<string>("");
   const [quadras, setQuadras] = useState<Quadra[]>([]);
@@ -26,14 +52,15 @@ function MapaPage() {
   const [selected, setSelected] = useState<Lote | null>(null);
   const [q, setQ] = useState("");
 
+  // Aguarda o perfil carregar antes de definir o loteamentoId
   useEffect(() => {
+    if (authLoading) return;
     fetchLoteamentos().then((data) => {
       setLoteamentos(data);
-      if (data.length > 0 && !loteamentoId) {
-        setLoteamentoId(data[0].id);
-      }
+      const id = lockedId || (data.length > 0 ? data[0].id : "");
+      setLoteamentoId(id);
     });
-  }, []);
+  }, [authLoading, isStaff, profileLock]);
 
   async function load(currentId: string) {
     if (!currentId) return;
@@ -96,9 +123,14 @@ function MapaPage() {
       confirmado: 0,
       pendencia: 0,
     };
-    for (const l of lotes) counts[l.status]++;
+    for (const l of lotes) {
+      const currentProps = propsByLote.get(l.id) ?? [];
+      const st = deriveStatus(currentProps);
+      l.status = st; // Atualiza o lote localmente para o mapa renderizar com a cor certa
+      counts[st]++;
+    }
     return counts;
-  }, [lotes]);
+  }, [lotes, propsByLote]);
 
   const lotesByQuadra = useMemo(() => {
     const m = new Map<string, Lote[]>();
@@ -139,16 +171,22 @@ function MapaPage() {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-2xl font-bold tracking-tight">Planta do Loteamento</h1>
-              <Select value={loteamentoId} onValueChange={setLoteamentoId}>
-                <SelectTrigger className="w-[280px] h-8">
-                  <SelectValue placeholder="Selecione um loteamento" />
-                </SelectTrigger>
-                <SelectContent>
-                  {loteamentos.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>{l.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isLocked ? (
+                <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 border border-blue-200">
+                  {selectedLoteamento?.nome ?? ""}
+                </span>
+              ) : (
+                <Select value={loteamentoId} onValueChange={setLoteamentoId}>
+                  <SelectTrigger className="w-[280px] h-8">
+                    <SelectValue placeholder="Selecione um loteamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loteamentos.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>{l.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <p className="text-sm text-muted-foreground">
               Encontre seu lote no mapa e clique para apoiar o asfaltamento da Rua. Os lotes verdes já apoiam.
@@ -207,6 +245,7 @@ function MapaPage() {
                     lotes={lotesByQuadra.get(qd.id) ?? []}
                     isHighlighted={(l) => isHighlighted(l, qd)}
                     onLoteClick={setSelected}
+                    propsByLote={propsByLote}
                   />
                 );
               })}
@@ -229,6 +268,7 @@ function MapaPage() {
                     lotes={lotesByQuadra.get(qd.id) ?? []}
                     isHighlighted={(l) => isHighlighted(l, qd)}
                     onLoteClick={setSelected}
+                    propsByLote={propsByLote}
                   />
                 );
               })}
@@ -248,6 +288,7 @@ function MapaPage() {
                   lotes={lotesByQuadra.get(qd.id) ?? []}
                   isHighlighted={(l) => isHighlighted(l, qd)}
                   onLoteClick={setSelected}
+                  propsByLote={propsByLote}
                 />
               ))}
             </div>
@@ -260,9 +301,10 @@ function MapaPage() {
           lote={selected}
           quadra={quadras.find((q) => q.id === selected.quadra_id)!}
           proprietarios={propsByLote.get(selected.id) ?? []}
+          allProps={props}
           open={!!selected}
           onOpenChange={(v) => !v && setSelected(null)}
-          onSaved={load}
+          onSaved={() => load(loteamentoId)}
         />
       )}
     </AppShell>
@@ -284,12 +326,14 @@ function QuadraCard({
   streets,
   isHighlighted,
   onLoteClick,
+  propsByLote,
 }: {
   quadra: Quadra;
   lotes: Lote[];
   streets: { n: string; s: string; w: string; e: string };
   isHighlighted: (l: Lote) => boolean;
   onLoteClick: (l: Lote) => void;
+  propsByLote: Map<string, Proprietario[]>;
 }) {
   // Linha de cima: primeira metade (esq → dir). Linha de baixo: segunda metade (dir → esq).
   const half = Math.ceil(lotes.length / 2);
@@ -315,8 +359,8 @@ function QuadraCard({
         <div className="grid grid-cols-[auto_1fr_auto] items-stretch gap-0 my-1">
           <StreetLabel label={streets.w} direction="v" />
           <div className="flex flex-col gap-0.5 px-1 py-1 bg-[oklch(0.93_0.05_140)] border-y-2 border-[oklch(0.55_0.12_140)]">
-            <Row lotes={topRow} isHighlighted={isHighlighted} onClick={onLoteClick} />
-            <Row lotes={bottomRow} isHighlighted={isHighlighted} onClick={onLoteClick} />
+            <Row lotes={topRow} isHighlighted={isHighlighted} onClick={onLoteClick} propsByLote={propsByLote} />
+            <Row lotes={bottomRow} isHighlighted={isHighlighted} onClick={onLoteClick} propsByLote={propsByLote} />
           </div>
           <StreetLabel label={streets.e} direction="v" />
         </div>
@@ -350,28 +394,40 @@ function Row({
   lotes,
   isHighlighted,
   onClick,
+  propsByLote,
 }: {
   lotes: Lote[];
   isHighlighted: (l: Lote) => boolean;
   onClick: (l: Lote) => void;
+  propsByLote: Map<string, Proprietario[]>;
 }) {
   return (
     <div className="flex gap-0.5">
-      {lotes.map((l) => (
-        <button
-          key={l.id}
-          onClick={() => onClick(l)}
-          title={`Lote ${l.numero}`}
-          style={{ background: `var(--status-${l.status === "sem_cadastro" ? "sem" : l.status})` }}
-          className={cn(
-            "w-6 h-9 sm:w-7 sm:h-11 text-[9px] sm:text-[10px] font-semibold rounded-sm border border-black/10 flex items-center justify-center transition-all hover:scale-110 hover:z-10 hover:shadow-md hover:ring-2 hover:ring-primary",
-            isHighlighted(l) && "ring-2 ring-primary ring-offset-1 scale-110 z-10",
-            (l.status === "confirmado" || l.status === "cadastrado") ? "text-white" : "text-foreground/80",
-          )}
-        >
-          {l.numero.padStart(2, "0")}
-        </button>
-      ))}
+      {lotes.map((l) => {
+        const pr = propsByLote.get(l.id) || [];
+        const fracaoTotal = pr.reduce((acc, p) => acc + Number(p.fracao || 0), 0);
+        let bg = `var(--status-${l.status === "sem_cadastro" ? "sem" : l.status})`;
+        
+        if (fracaoTotal > 0 && fracaoTotal < 100) {
+          bg = `linear-gradient(90deg, var(--status-${l.status === "sem_cadastro" ? "sem" : l.status}) ${fracaoTotal}%, var(--status-sem) ${fracaoTotal}%)`;
+        }
+
+        return (
+          <button
+            key={l.id}
+            onClick={() => onClick(l)}
+            title={`Lote ${l.numero}`}
+            style={{ background: bg }}
+            className={cn(
+              "w-6 h-9 sm:w-7 sm:h-11 text-[9px] sm:text-[10px] font-semibold rounded-sm border border-black/10 flex items-center justify-center transition-all hover:scale-110 hover:z-10 hover:shadow-md hover:ring-2 hover:ring-primary",
+              isHighlighted(l) && "ring-2 ring-primary ring-offset-1 scale-110 z-10",
+              (l.status === "confirmado" || l.status === "cadastrado") ? "text-white" : "text-foreground/80",
+            )}
+          >
+            {l.numero.padStart(2, "0")}
+          </button>
+        );
+      })}
     </div>
   );
 }

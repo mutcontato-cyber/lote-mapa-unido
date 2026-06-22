@@ -12,7 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchQuadras, fetchLotes, fetchLoteamentos, type Quadra, type Lote, type Loteamento } from "@/lib/queries";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
-import { Trash2, Plus, KeyRound, MessageCircle, UserX, Download, FileSpreadsheet } from "lucide-react";
+import { Trash2, Plus, KeyRound, MessageCircle, UserX, Download, FileSpreadsheet, FileText, Edit, Send, Info, Calendar as CalendarIcon, List as ListIcon, Cake, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { toast } from "sonner";
 import { Toaster } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
@@ -21,7 +23,6 @@ import { ADMIN_NOME, waLink } from "@/lib/admin-config";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useMemo } from "react";
-import { Cake, Send, ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 interface PasswordReset {
   id: string;
@@ -50,7 +51,8 @@ interface CadastroRow {
   assinatura_status: string;
   situacao: string | null;
   observacoes: string | null;
-  melhorias: any;
+  melhorias: any | null;
+  loteamento_id: string;
   data_cadastro: string;
   lote_numero: string;
   quadra_nome: string;
@@ -76,14 +78,22 @@ function AdminPage() {
   const [globalBdayMessage, setGlobalBdayMessage] = useState("Olá {nome}! A ADECAF deseja a você um feliz aniversário! Que seu dia seja muito especial, com muita paz e saúde. 🎂🎉");
   const [isSavingBdayMessage, setIsSavingBdayMessage] = useState(false);
 
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [customBdayUser, setCustomBdayUser] = useState<{nome: string, whatsapp: string} | null>(null);
+  const [customBdayMessage, setCustomBdayMessage] = useState("");
+  const [isSavingCustom, setIsSavingCustom] = useState(false);
+
   const generateResetFn = useServerFn(generatePasswordReset);
   const deleteMoradorFn = useServerFn(deleteMorador);
   const sendEvolutionFn = useServerFn(sendEvolutionWhatsApp);
 
   const [bdayModalOpen, setBdayModalOpen] = useState(false);
-  const [bdayUser, setBdayUser] = useState<CadastroRow | null>(null);
-  const [bdayMessage, setBdayMessage] = useState("");
-  const [sendingBday, setSendingBday] = useState(false);
+
+  const [editUserOpen, setEditUserOpen] = useState(false);
+  const [editUser, setEditUser] = useState<{ id: string; full_name: string; phone: string } | null>(null);
+
+  const [editCadastroOpen, setEditCadastroOpen] = useState(false);
+  const [editCadastro, setEditCadastro] = useState<CadastroRow | null>(null);
 
   const [testPhone, setTestPhone] = useState("");
   const [testMessage, setTestMessage] = useState("Teste de integração ADECAF via Evolution API!");
@@ -91,7 +101,8 @@ function AdminPage() {
 
   const [bdayView, setBdayView] = useState<"calendar" | "list">("calendar");
   const [bdaySearch, setBdaySearch] = useState("");
-
+  const [exportLoteamentoId, setExportLoteamentoId] = useState<string>("all");
+  
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
@@ -181,6 +192,51 @@ function AdminPage() {
     setBdayModalOpen(true);
   }
 
+  async function openScheduleModal(user: { nome: string; whatsapp: string }) {
+    if (!user.whatsapp) {
+      toast.error("Este usuário não possui WhatsApp cadastrado.");
+      return;
+    }
+    const nome = user.nome.split(" ")[0];
+    setCustomBdayUser(user);
+    
+    let num = user.whatsapp.replace(/\D/g, "");
+    if (!num.startsWith("55")) num = "55" + num;
+    
+    // Buscar no banco se já tem
+    const { data } = await supabase.from('mensagens_customizadas').select('mensagem').eq('telefone', num).maybeSingle();
+    
+    if (data && data.mensagem) {
+      setCustomBdayMessage(data.mensagem);
+    } else {
+      setCustomBdayMessage(`Olá {nome}! Temos um presente super especial para o seu próximo aniversário...`);
+    }
+    
+    setScheduleModalOpen(true);
+  }
+
+  async function saveCustomBdayMessage() {
+    if (!customBdayUser) return;
+    setIsSavingCustom(true);
+    try {
+      let num = customBdayUser.whatsapp.replace(/\D/g, "");
+      if (!num.startsWith("55")) num = "55" + num;
+
+      const { error } = await supabase.from('mensagens_customizadas').upsert({ 
+        telefone: num, 
+        mensagem: customBdayMessage 
+      });
+
+      if (error) throw error;
+      toast.success("Mensagem especial agendada para o próximo aniversário!");
+      setScheduleModalOpen(false);
+    } catch (err) {
+      toast.error("Erro ao agendar a mensagem customizada.");
+    } finally {
+      setIsSavingCustom(false);
+    }
+  }
+
   async function saveGlobalBdayMessage() {
     setIsSavingBdayMessage(true);
     try {
@@ -268,7 +324,7 @@ function AdminPage() {
 
       const { data: props } = await supabase
         .from("proprietarios")
-        .select("*, lotes(numero, quadras(nome))")
+        .select("*, lotes(numero, quadras(nome, loteamento_id))")
         .order("data_cadastro", { ascending: false });
       const rows: CadastroRow[] = (props ?? []).map((p: any) => ({
         id: p.id,
@@ -290,6 +346,7 @@ function AdminPage() {
         data_cadastro: p.data_cadastro,
         lote_numero: p.lotes?.numero ?? "",
         quadra_nome: p.lotes?.quadras?.nome ?? "",
+        loteamento_id: p.lotes?.quadras?.loteamento_id ?? "",
       }));
       setCadastros(rows);
     }
@@ -405,6 +462,52 @@ function AdminPage() {
     load();
   }
 
+  async function saveEditUser() {
+    if (!editUser) return;
+    try {
+      const { error } = await supabase.rpc('admin_update_profile', {
+        target_user_id: editUser.id,
+        new_full_name: editUser.full_name,
+        new_phone: editUser.phone
+      });
+      if (error) throw error;
+
+      // Sincroniza o número atualizado para a ficha do lote (que alimenta os aniversários)
+      await supabase.from("proprietarios").update({
+        telefone: editUser.phone,
+        whatsapp: editUser.phone
+      }).ilike("nome", editUser.full_name);
+
+      toast.success("Morador atualizado com sucesso!");
+      setEditUserOpen(false);
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao atualizar morador");
+    }
+  }
+
+  async function saveEditCadastro() {
+    if (!editCadastro) return;
+    try {
+      const { error } = await supabase.from("proprietarios").update({
+        nome: editCadastro.nome,
+        telefone: editCadastro.telefone,
+        whatsapp: editCadastro.telefone,
+        data_nascimento: editCadastro.data_nascimento || null,
+        cpf: editCadastro.cpf || null,
+        qtd_moradores: editCadastro.qtd_moradores || null,
+        fracao: editCadastro.fracao || 100,
+        observacoes: editCadastro.observacoes || null,
+      }).eq("id", editCadastro.id);
+      if (error) throw error;
+      toast.success("Cadastro do lote atualizado com sucesso!");
+      setEditCadastroOpen(false);
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao atualizar cadastro do lote");
+    }
+  }
+
   async function excluirMorador(userId: string, nome: string) {
     if (!confirm(`Excluir o cadastro completo de ${nome}? Essa ação não pode ser desfeita.`)) return;
     try {
@@ -477,14 +580,88 @@ function AdminPage() {
     downloadFile(`cadastro-${safe}.csv`, csv);
   }
 
+  // --- FILTRO DE EXPORTAÇÃO ---
+  const cadastrosFiltrados = useMemo(() => {
+    if (exportLoteamentoId === "all") return cadastros;
+    return cadastros.filter(c => c.loteamento_id === exportLoteamentoId);
+  }, [cadastros, exportLoteamentoId]);
+
   function baixarTodos() {
-    if (!cadastros.length) {
-      toast.error("Nenhum cadastro para baixar");
+    if (!cadastrosFiltrados.length) {
+      toast.error("Nenhum cadastro para baixar neste filtro");
       return;
     }
-    const csv = toCSV(cadastros.map(rowToObject));
+    const csv = toCSV(cadastrosFiltrados.map(rowToObject));
     const data = new Date().toISOString().slice(0, 10);
-    downloadFile(`cadastros-adecaf-${data}.csv`, csv);
+    const nomeLot = exportLoteamentoId === "all" ? "Todos" : (loteamentos.find(l => l.id === exportLoteamentoId)?.nome ?? "Filtrado");
+    downloadFile(`cadastros-adecaf-${nomeLot}-${data}.csv`, csv);
+  }
+
+  function baixarTodosPDF() {
+    if (!cadastrosFiltrados.length) {
+      toast.error("Nenhum cadastro para baixar neste filtro");
+      return;
+    }
+    const doc = new jsPDF("landscape");
+    const nomeLot = exportLoteamentoId === "all" ? "Geral" : (loteamentos.find(l => l.id === exportLoteamentoId)?.nome ?? "");
+    doc.text(`Cadastros Recebidos - ADECAF ${nomeLot !== "Geral" ? `- ${nomeLot}` : ""}`, 14, 15);
+    
+    const head = [["Nome", "Telefone", "Quadra/Lote", "Tipo", "Apoia Asfalto", "Questionário", "Data"]];
+    const body = cadastrosFiltrados.map(c => [
+      c.nome,
+      c.telefone || "—",
+      `Q${c.quadra_nome} L${c.lote_numero}`,
+      c.fracao === 100 ? "Inteiro" : `${c.fracao}%`,
+      c.apoia_asfalto ? "Sim" : c.apoia_asfalto === false ? "Não" : "—",
+      formatMelhorias(c.melhorias) || "—",
+      new Date(c.data_cadastro).toLocaleDateString("pt-BR")
+    ]);
+
+    autoTable(doc, {
+      head,
+      body,
+      startY: 20,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [41, 128, 185] }
+    });
+    
+    const data = new Date().toISOString().slice(0, 10);
+    doc.save(`cadastros-adecaf-${data}.pdf`);
+  }
+
+  function baixarUmPDF(c: CadastroRow) {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Ficha de Cadastro - ADECAF", 14, 20);
+    
+    doc.setFontSize(10);
+    doc.text(`Data de Emissão: ${new Date().toLocaleString("pt-BR")}`, 14, 26);
+    
+    const data = [
+      ["Nome Completo:", c.nome],
+      ["Telefone / WhatsApp:", c.telefone || c.whatsapp || "—"],
+      ["CPF:", c.cpf || "—"],
+      ["Data de Nascimento:", c.data_nascimento ? new Date(c.data_nascimento).toLocaleDateString("pt-BR") : "—"],
+      ["Endereço Atual:", c.endereco || "—"],
+      ["Quadra / Lote:", `Quadra ${c.quadra_nome} - Lote ${c.lote_numero}`],
+      ["Tipo de Lote:", c.fracao === 100 ? "Lote Inteiro (100%)" : `${c.fracao}% (Metade)`],
+      ["Qtd. de Moradores:", c.qtd_moradores ? String(c.qtd_moradores) : "—"],
+      ["Apoia Asfalto:", c.apoia_asfalto ? "Sim" : c.apoia_asfalto === false ? "Não" : "—"],
+      ["Respostas do Questionário:", formatMelhorias(c.melhorias) || "—"],
+      ["Observações:", c.observacoes || "—"],
+      ["Data de Cadastro:", new Date(c.data_cadastro).toLocaleString("pt-BR")],
+    ];
+
+    autoTable(doc, {
+      body: data,
+      startY: 32,
+      theme: 'grid',
+      styles: { fontSize: 11, cellPadding: 4 },
+      columnStyles: { 0: { fontStyle: 'bold', fillColor: [245, 245, 245], cellWidth: 60 } }
+    });
+
+    const safe = c.nome.replace(/[^\w\d-]+/g, "_");
+    doc.save(`ficha-${safe}.pdf`);
   }
 
   if (loading) {
@@ -581,6 +758,27 @@ function AdminPage() {
               <p className="text-xs text-muted-foreground mt-3">
                 Ao clicar em <strong>Gerar senha</strong>, o sistema cria uma senha aleatória, atualiza o cadastro do morador e abre o WhatsApp para você enviar a senha.
               </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {isAdmin && (
+          <Card className="border-pink-300 bg-pink-50/40">
+            <CardHeader>
+              <CardTitle>Mensagem Global de Aniversário</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-pink-800">
+                Esta é a mensagem que o robô vai enviar <strong>automaticamente todos os dias às 08h da manhã</strong>. Use <code className="bg-pink-100 px-1 rounded">{"{nome}"}</code> no texto onde quiser que o primeiro nome da pessoa seja inserido.
+              </p>
+              <Textarea 
+                value={globalBdayMessage}
+                onChange={(e) => setGlobalBdayMessage(e.target.value)}
+                className="min-h-[120px] bg-white border-pink-200"
+              />
+              <Button onClick={saveGlobalBdayMessage} disabled={isSavingBdayMessage} className="bg-pink-600 hover:bg-pink-700 text-white">
+                {isSavingBdayMessage ? "Salvando..." : "Salvar Mensagem"}
+              </Button>
             </CardContent>
           </Card>
         )}
@@ -698,9 +896,9 @@ function AdminPage() {
                               <TableCell className="font-medium">{c.nome}</TableCell>
                               <TableCell>{c.whatsapp || "—"}</TableCell>
                               <TableCell className="text-right">
-                                <Button size="sm" variant="outline" className="border-pink-200 text-pink-700 hover:bg-pink-100" onClick={() => openBdayModal(c)}>
-                                  <Send className="h-3.5 w-3.5 mr-1" />
-                                  Enviar
+                                <Button size="sm" variant="outline" className="border-pink-200 text-pink-700 hover:bg-pink-100" onClick={() => openScheduleModal(c)}>
+                                  <Cake className="h-3.5 w-3.5 mr-1" />
+                                  Mensagem VIP
                                 </Button>
                               </TableCell>
                             </TableRow>
@@ -721,86 +919,70 @@ function AdminPage() {
           </Card>
         )}
 
-        <Dialog open={bdayModalOpen} onOpenChange={setBdayModalOpen}>
-          <DialogContent>
+        {/* Modal para agendar mensagem customizada */}
+        <Dialog open={scheduleModalOpen} onOpenChange={setScheduleModalOpen}>
+          <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Enviar Feliz Aniversário</DialogTitle>
+              <DialogTitle>Agendar Mensagem Especial</DialogTitle>
               <DialogDescription>
-                Você está prestes a enviar uma mensagem via WhatsApp para {bdayUser?.nome}.
+                A mensagem abaixo será enviada AUTOMATICAMENTE para <strong>{customBdayUser?.nome}</strong> no próximo aniversário dele(a). Após ser enviada, essa mensagem será apagada e no ano seguinte ele(a) voltará a receber a mensagem padrão.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Mensagem</Label>
-                <Textarea 
-                  value={bdayMessage} 
-                  onChange={(e) => setBdayMessage(e.target.value)}
-                  className="min-h-[120px]"
-                />
-              </div>
+            <div className="grid gap-4 py-4">
+              <Textarea
+                className="min-h-[150px]"
+                value={customBdayMessage}
+                onChange={(e) => setCustomBdayMessage(e.target.value)}
+                placeholder="Digite o cupom ou recado especial..."
+              />
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setBdayModalOpen(false)}>Cancelar</Button>
-              <Button onClick={sendBdayWhatsApp} disabled={sendingBday}>
-                {sendingBday ? "Enviando..." : "Confirmar Envio"}
+              <Button variant="outline" onClick={() => setScheduleModalOpen(false)}>Cancelar</Button>
+              <Button onClick={saveCustomBdayMessage} disabled={isSavingCustom}>
+                {isSavingCustom ? "Salvando..." : "Agendar Mensagem"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {isAdmin && (
-          <Card className="border-green-300 bg-green-50/40">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageCircle className="h-5 w-5 text-green-600" />
-                Testar Integração WhatsApp
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Telefone (com DDD)</Label>
-                  <Input 
-                    placeholder="Ex: 11999999999" 
-                    value={testPhone} 
-                    onChange={e => setTestPhone(e.target.value)} 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Mensagem</Label>
-                  <Textarea 
-                    placeholder="Sua mensagem de teste" 
-                    value={testMessage} 
-                    onChange={e => setTestMessage(e.target.value)} 
-                  />
-                </div>
-              </div>
-              <Button onClick={testWhatsApp} disabled={testingWa} className="bg-green-600 hover:bg-green-700 text-white">
-                <Send className="h-4 w-4 mr-2" />
-                {testingWa ? "Enviando..." : "Enviar Teste"}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
 
         {isAdmin && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between gap-2 flex-wrap">
-                <span className="flex items-center gap-2">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <CardTitle className="flex items-center gap-2">
                   <FileSpreadsheet className="h-5 w-5 text-primary" />
                   Cadastros enviados
-                  <Badge variant="secondary">{cadastros.length}</Badge>
-                </span>
-                <Button size="sm" onClick={baixarTodos} disabled={!cadastros.length}>
-                  <Download className="h-4 w-4 mr-1" />
-                  Baixar todos (CSV)
-                </Button>
-              </CardTitle>
+                  <Badge variant="secondary">{cadastrosFiltrados.length}</Badge>
+                </CardTitle>
+                
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select value={exportLoteamentoId} onValueChange={setExportLoteamentoId}>
+                    <SelectTrigger className="w-[180px] h-8 text-xs">
+                      <SelectValue placeholder="Todos os Loteamentos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os Loteamentos</SelectItem>
+                      {loteamentos.map((l) => (
+                        <SelectItem key={l.id} value={l.id}>{l.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Button size="sm" onClick={baixarTodos} disabled={!cadastrosFiltrados.length}>
+                    <Download className="h-4 w-4 mr-1" />
+                    Baixar (CSV)
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={baixarTodosPDF} disabled={!cadastrosFiltrados.length}>
+                    <FileText className="h-4 w-4 mr-1 text-red-500" />
+                    Baixar (PDF)
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              {cadastros.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhum cadastro recebido ainda.</p>
+              {cadastrosFiltrados.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum cadastro recebido para este loteamento ainda.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
@@ -815,7 +997,7 @@ function AdminPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {cadastros.map((c) => (
+                      {cadastrosFiltrados.map((c) => (
                         <TableRow key={c.id}>
                           <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                             {new Date(c.data_cadastro).toLocaleDateString("pt-BR")}
@@ -824,9 +1006,9 @@ function AdminPage() {
                           <TableCell className="whitespace-nowrap">{c.telefone ?? "—"}</TableCell>
                           <TableCell className="whitespace-nowrap">
                             {c.quadra_nome} / {c.lote_numero}
-                            {c.fracao < 1 && (
+                            {c.fracao !== 100 && (
                               <Badge variant="outline" className="ml-2">
-                                {Math.round(c.fracao * 100)}%
+                                Metade ({c.fracao}%)
                               </Badge>
                             )}
                           </TableCell>
@@ -840,10 +1022,17 @@ function AdminPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button size="sm" variant="outline" onClick={() => baixarUm(c)}>
-                              <Download className="h-3.5 w-3.5 mr-1" />
-                              Baixar
-                            </Button>
+                            <div className="flex justify-end gap-1">
+                              <Button size="icon" variant="ghost" onClick={() => { setEditCadastro({ ...c }); setEditCadastroOpen(true); }} title="Editar ficha do lote">
+                                <Edit className="h-4 w-4 text-blue-500" />
+                              </Button>
+                              <Button size="icon" variant="ghost" onClick={() => baixarUmPDF(c)} title="Baixar Ficha Individual (PDF)">
+                                <FileText className="h-4 w-4 text-red-500" />
+                              </Button>
+                              <Button size="icon" variant="ghost" onClick={() => baixarUm(c)} title="Baixar Planilha Individual (CSV)">
+                                <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -865,23 +1054,53 @@ function AdminPage() {
           <CardContent className="space-y-6">
             <div className="space-y-3 border-b border-border pb-6">
               <Label>Loteamento selecionado para edição</Label>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <Select value={loteamentoId} onValueChange={setLoteamentoId}>
-                  <SelectTrigger className="w-full sm:w-[350px]">
-                    <SelectValue placeholder="Selecione um loteamento..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {loteamentos.map((l) => (
-                      <SelectItem key={l.id} value={l.id}>{l.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <Select value={loteamentoId} onValueChange={setLoteamentoId}>
+                    <SelectTrigger className="w-full sm:w-[350px]">
+                      <SelectValue placeholder="Selecione um loteamento..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {loteamentos.map((l) => (
+                        <SelectItem key={l.id} value={l.id}>{l.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-                {loteamentoId && (
-                  <Button variant="outline" size="icon" onClick={excluirLoteamento} title="Excluir Loteamento selecionado">
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                )}
+                  {loteamentoId && (
+                    <Button variant="outline" size="icon" onClick={excluirLoteamento} title="Excluir Loteamento selecionado">
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+
+                {loteamentoId && (() => {
+                  const selectedLot = loteamentos.find(l => l.id === loteamentoId);
+                  const shareLink = `${typeof window !== "undefined" ? window.location.origin : ""}/mapa?loteamento=${loteamentoId}`;
+                  return (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-3 space-y-2">
+                      <p className="text-xs font-semibold text-blue-700">
+                        🔗 Link de Divulgação — {selectedLot?.nome}
+                      </p>
+                      <p className="text-[11px] text-blue-600/80">
+                        Envie este link para os moradores. Quem acessar por aqui só poderá ver e preencher lotes deste loteamento, sem opção de troca.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 text-[11px] bg-white border border-blue-200 rounded px-2 py-1.5 font-mono text-blue-900 break-all">
+                          {shareLink}
+                        </code>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0 border-blue-300 text-blue-700 hover:bg-blue-100"
+                          onClick={() => { navigator.clipboard.writeText(shareLink); toast.success("Link copiado!"); }}
+                        >
+                          Copiar
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
               
               <div className="flex flex-col sm:flex-row gap-2 pt-2">
@@ -948,27 +1167,6 @@ function AdminPage() {
         {isAdmin && (
           <Card>
             <CardHeader>
-              <CardTitle>Configuração da Mensagem de Aniversário</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Edite o texto que será enviado aos aniversariantes. Use <code className="bg-muted px-1 rounded">{"{nome}"}</code> no texto onde quiser que o primeiro nome da pessoa seja inserido automaticamente.
-              </p>
-              <Textarea 
-                value={globalBdayMessage}
-                onChange={(e) => setGlobalBdayMessage(e.target.value)}
-                className="min-h-[120px]"
-              />
-              <Button onClick={saveGlobalBdayMessage} disabled={isSavingBdayMessage}>
-                {isSavingBdayMessage ? "Salvando..." : "Salvar Mensagem Global"}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {isAdmin && (
-          <Card>
-            <CardHeader>
               <CardTitle>Moradores cadastrados</CardTitle>
             </CardHeader>
             <CardContent>
@@ -978,8 +1176,8 @@ function AdminPage() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Telefone</TableHead>
                     <TableHead>Papel atual</TableHead>
-                    <TableHead>Alterar</TableHead>
-                    <TableHead className="text-right">Excluir</TableHead>
+                    <TableHead>Alterar Papel</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1001,14 +1199,27 @@ function AdminPage() {
                         </Select>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => excluirMorador(u.id, u.full_name)}
-                          title="Excluir cadastro"
-                        >
-                          <UserX className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditUser({ id: u.id, full_name: u.full_name, phone: u.phone });
+                              setEditUserOpen(true);
+                            }}
+                            title="Editar cadastro"
+                          >
+                            <Edit className="h-4 w-4 text-blue-500" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => excluirMorador(u.id, u.full_name)}
+                            title="Excluir cadastro"
+                          >
+                            <UserX className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1017,6 +1228,109 @@ function AdminPage() {
             </CardContent>
           </Card>
         )}
+
+        <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Morador</DialogTitle>
+              <DialogDescription>Altere as informações do usuário abaixo.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Nome Completo</Label>
+                <Input
+                  value={editUser?.full_name || ""}
+                  onChange={(e) => setEditUser(prev => prev ? { ...prev, full_name: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Telefone / WhatsApp</Label>
+                <Input
+                  value={editUser?.phone || ""}
+                  onChange={(e) => setEditUser(prev => prev ? { ...prev, phone: e.target.value } : null)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditUserOpen(false)}>Cancelar</Button>
+              <Button onClick={saveEditUser}>Salvar Alterações</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={editCadastroOpen} onOpenChange={setEditCadastroOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Editar Ficha de Cadastro Completa</DialogTitle>
+              <DialogDescription>
+                Alterar as informações registradas na ficha de lote deste proprietário. Isso afeta o módulo de Aniversários e as informações do Mapa.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+              <div className="space-y-2">
+                <Label>Nome Completo</Label>
+                <Input
+                  value={editCadastro?.nome || ""}
+                  onChange={(e) => setEditCadastro(prev => prev ? { ...prev, nome: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>CPF</Label>
+                <Input
+                  value={editCadastro?.cpf || ""}
+                  onChange={(e) => setEditCadastro(prev => prev ? { ...prev, cpf: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Telefone / WhatsApp</Label>
+                <Input
+                  value={editCadastro?.telefone || ""}
+                  onChange={(e) => setEditCadastro(prev => prev ? { ...prev, telefone: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Data de Nascimento</Label>
+                <Input
+                  type="date"
+                  value={editCadastro?.data_nascimento || ""}
+                  onChange={(e) => setEditCadastro(prev => prev ? { ...prev, data_nascimento: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Quantidade de Moradores na Casa</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={editCadastro?.qtd_moradores || ""}
+                  onChange={(e) => setEditCadastro(prev => prev ? { ...prev, qtd_moradores: Number(e.target.value) } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Fração do Lote (%)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={editCadastro?.fracao || 100}
+                  onChange={(e) => setEditCadastro(prev => prev ? { ...prev, fracao: Number(e.target.value) } : null)}
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Endereço e Observações</Label>
+                <Textarea
+                  value={editCadastro?.observacoes || ""}
+                  onChange={(e) => setEditCadastro(prev => prev ? { ...prev, observacoes: e.target.value } : null)}
+                  placeholder="Anotações sobre a casa, pendências, etc."
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditCadastroOpen(false)}>Cancelar</Button>
+              <Button onClick={saveEditCadastro}>Salvar Alterações</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
       </div>
     </AppShell>
   );

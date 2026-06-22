@@ -32,11 +32,13 @@ export const Route = createFileRoute("/auth")({
       { name: "description", content: "Acesso à plataforma da Associação ADECAF para o abaixo-assinado de asfaltamento." },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>) => ({ loteamento: search.loteamento as string | undefined }),
   component: AuthPage,
 });
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { loteamento: loteamentoParam } = Route.useSearch();
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -70,7 +72,11 @@ function AuthPage() {
         await supabase.auth.signOut();
         throw new Error("Esse cadastro não tem acesso de administrador.");
       }
-      navigate({ to: dest });
+      if (loteamentoParam && dest === "/mapa") {
+        navigate({ to: "/mapa", search: { loteamento: loteamentoParam } });
+      } else {
+        navigate({ to: dest });
+      }
     } catch (e: any) {
       setErr(traduzirErro(e));
     } finally {
@@ -116,8 +122,16 @@ function AuthPage() {
     }
     setLoading(true);
     try {
-      await signUpWithPhonePassword(phone, name, password, TERMO_TEXTO, dataNascimento);
-      navigate({ to: "/mapa" });
+      // Usa o loteamento da URL ou do localStorage (salvo quando acessou o link)
+      const loteamentoId = loteamentoParam || localStorage.getItem("adecaf_loteamento_lock") || undefined;
+      await signUpWithPhonePassword(phone, name, password, TERMO_TEXTO, dataNascimento, loteamentoId);
+      // Limpa o localStorage pois agora está no banco
+      if (loteamentoId) localStorage.removeItem("adecaf_loteamento_lock");
+      if (loteamentoParam) {
+        navigate({ to: "/mapa", search: { loteamento: loteamentoParam } });
+      } else {
+        navigate({ to: "/mapa" });
+      }
     } catch (e: any) {
       setErr(traduzirErro(e));
     } finally {
