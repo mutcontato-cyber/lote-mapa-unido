@@ -308,13 +308,63 @@ export function LotSheet({ lote, quadra, open, onOpenChange, onSaved }: Props) {
           <Textarea rows={2} value={obs} onChange={(e) => setObs(e.target.value)} disabled={!isStaff} />
         </div>
 
+        <div className="space-y-3 border-t pt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold">Moradores da residência</h3>
+              <p className="text-xs text-muted-foreground">
+                Cadastre todos os moradores que vivem neste lote (nome, data de nascimento e telefone).
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={addMorador}>
+              <Plus className="h-4 w-4 mr-1" /> Adicionar morador
+            </Button>
+          </div>
+          {moradores.length === 0 && (
+            <div className="text-sm text-muted-foreground italic border rounded-md p-4 text-center">
+              Nenhum morador cadastrado. Clique em "Adicionar morador" para começar.
+            </div>
+          )}
+          {moradores.map((m, i) => (
+            <div key={m.id ?? `new-${i}`} className="border rounded-lg p-3 bg-muted/20">
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_180px_180px_auto] gap-3 items-end">
+                <div>
+                  <Label className="text-xs">Nome completo *</Label>
+                  <Input
+                    value={m.nome}
+                    onChange={(e) => updateMorador(i, { nome: e.target.value })}
+                    placeholder="Nome do morador"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Data de nascimento</Label>
+                  <Input
+                    type="date"
+                    value={m.data_nascimento ?? ""}
+                    onChange={(e) => updateMorador(i, { data_nascimento: e.target.value || null })}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Telefone</Label>
+                  <Input
+                    value={m.telefone ?? ""}
+                    onChange={(e) => updateMorador(i, { telefone: e.target.value })}
+                    placeholder="(00) 00000-0000"
+                  />
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => removeMorador(i)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
-          {isStaff && (
-            <Button onClick={save} disabled={loading}>
-              {loading ? "Salvando…" : "Salvar"}
-            </Button>
-          )}
+          <Button onClick={save} disabled={loading}>
+            {loading ? "Salvando…" : "Salvar"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
