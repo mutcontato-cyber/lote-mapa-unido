@@ -117,6 +117,16 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
       toast.error("Este lote já tem alguém cadastrado. Selecione 'Meio lote'.");
       return;
     }
+    const qtd = qtdMoradores ? Number(qtdMoradores) : 1;
+    if (qtd > 1) {
+      const invalido = outrosMoradores.some(
+        (m) => !m.nome.trim() || !m.telefone.trim() || !m.data_nascimento.trim(),
+      );
+      if (invalido) {
+        toast.error("Preencha nome, telefone/WhatsApp e data de nascimento de todas as pessoas.");
+        return;
+      }
+    }
     setLoading(true);
     try {
       const fracao = tipoLote === "inteiro" ? 100 : 50;
