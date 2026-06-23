@@ -38,7 +38,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Menu className="h-5 w-5" />
           </Button>
           <Link to="/mapa" className="flex items-center">
-            <AdecafLogo className="h-12 md:h-14 w-auto" />
+            <AdecafLogo className="h-6 md:h-7 w-auto" />
           </Link>
           <nav className="hidden md:flex items-center gap-1 ml-6">
             {visibleNav.map((n) => {

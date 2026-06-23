@@ -55,7 +55,7 @@ function ResetPasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/30 p-4">
       <Card className="w-full max-w-md shadow-xl border-primary/20">
         <CardHeader className="text-center space-y-2">
-          <AdecafLogo className="mx-auto h-32 md:h-40 w-auto" />
+          <AdecafLogo className="mx-auto h-16 md:h-20 w-auto" />
           <CardTitle className="text-2xl">Trocar senha</CardTitle>
           <CardDescription>Defina uma nova senha para voltar ao acesso administrativo.</CardDescription>
         </CardHeader>
