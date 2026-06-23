@@ -58,6 +58,11 @@ interface CadastroRow {
   quadra_nome: string;
   lote_id: string;
   moradores?: MoradorRow[];
+  ip_address?: string | null;
+  user_agent?: string | null;
+  geo_country?: string | null;
+  geo_region?: string | null;
+  geo_city?: string | null;
 }
 
 interface MoradorRow {
