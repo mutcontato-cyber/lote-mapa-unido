@@ -146,7 +146,7 @@ function AuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/30 p-4">
       <Card className="w-full max-w-md shadow-xl border-primary/20">
         <CardHeader className="text-center space-y-2">
-          <AdecafLogo className="mx-auto h-20 w-auto" />
+          <AdecafLogo className="mx-auto h-28 w-auto" />
           <CardTitle className="text-2xl">ADECAF Rua Digna</CardTitle>
           <CardDescription>
             Plataforma da Associação de Moradores para o abaixo-assinado pelo asfaltamento.
