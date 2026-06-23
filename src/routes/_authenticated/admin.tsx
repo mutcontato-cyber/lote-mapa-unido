@@ -652,7 +652,7 @@ function AdminPage() {
     const nomeLot = exportLoteamentoId === "all" ? "Geral" : (loteamentos.find(l => l.id === exportLoteamentoId)?.nome ?? "");
     doc.text(`Cadastros Recebidos - ADECAF ${nomeLot !== "Geral" ? `- ${nomeLot}` : ""}`, 14, 15);
     
-    const head = [["Nome", "Telefone", "Quadra/Lote", "Tipo", "Apoia Asfalto", "Questionário", "Moradores", "Data"]];
+    const head = [["Nome", "Telefone", "Quadra/Lote", "Tipo", "Apoia", "Questionário", "Moradores", "Data", "IP", "Localização", "Navegador"]];
     const body = cadastrosFiltrados.map(c => [
       c.nome,
       c.telefone || "—",
@@ -661,15 +661,23 @@ function AdminPage() {
       c.apoia_asfalto ? "Sim" : c.apoia_asfalto === false ? "Não" : "—",
       formatMelhorias(c.melhorias) || "—",
       (c.moradores ?? []).map(m => m.nome).join(", ") || "—",
-      new Date(c.data_cadastro).toLocaleDateString("pt-BR")
+      new Date(c.data_cadastro).toLocaleDateString("pt-BR"),
+      c.ip_address || "—",
+      [c.geo_city, c.geo_region, c.geo_country].filter(Boolean).join(", ") || "—",
+      c.user_agent || "—",
     ]);
 
     autoTable(doc, {
       head,
       body,
       startY: 20,
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [41, 128, 185] }
+      styles: { fontSize: 7, cellPadding: 2, overflow: 'linebreak' },
+      headStyles: { fillColor: [41, 128, 185], fontSize: 8 },
+      columnStyles: {
+        8: { cellWidth: 22 },
+        9: { cellWidth: 30 },
+        10: { cellWidth: 40 },
+      },
     });
     
     const data = new Date().toISOString().slice(0, 10);
