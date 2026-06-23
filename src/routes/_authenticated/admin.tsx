@@ -366,6 +366,11 @@ function AdminPage() {
         quadra_nome: p.lotes?.quadras?.nome ?? "",
         loteamento_id: p.lotes?.quadras?.loteamento_id ?? "",
         lote_id: p.lote_id,
+        ip_address: p.ip_address ?? null,
+        user_agent: p.user_agent ?? null,
+        geo_country: p.geo_country ?? null,
+        geo_region: p.geo_region ?? null,
+        geo_city: p.geo_city ?? null,
       }));
 
       const { data: mds } = await supabase.from("moradores" as any).select("*");
