@@ -1,4 +1,4 @@
-import logoAsset from "@/assets/logo-adecaf.jpg.asset.json";
+import logoAsset from "@/assets/logo-adecaf.png.asset.json";
 import { cn } from "@/lib/utils";
 
 export function AdecafLogo({ className }: { className?: string }) {
