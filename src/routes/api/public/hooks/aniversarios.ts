@@ -61,6 +61,9 @@ async function executar() {
   const { data: profs } = await supabase
     .from('profiles')
     .select('id, full_name, phone, data_nascimento');
+  const { data: mors } = await supabase
+    .from('moradores')
+    .select('id, nome, telefone, data_nascimento');
 
   const aniversariantes = new Map<string, { nome: string; whatsapp: string }>();
 
@@ -78,6 +81,16 @@ async function executar() {
       const key = (u.full_name || '').trim().toLowerCase();
       if (key && !aniversariantes.has(key) && u.phone) {
         aniversariantes.set(key, { nome: u.full_name, whatsapp: u.phone });
+      }
+    }
+  });
+
+  (mors || []).forEach((m: any) => {
+    const b = parseBday(m.data_nascimento);
+    if (b && b.dia === todayDia && b.mes === todayMes) {
+      const key = (m.nome || '').trim().toLowerCase();
+      if (key && !aniversariantes.has(key) && m.telefone) {
+        aniversariantes.set(key, { nome: m.nome, whatsapp: m.telefone });
       }
     }
   });
