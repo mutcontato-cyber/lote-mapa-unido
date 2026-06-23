@@ -132,6 +132,27 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
       const fracao = tipoLote === "inteiro" ? 100 : 50;
       const situacao = tipoLote === "meio" ? "Meio lote" : null;
 
+      // Captura IP, navegador e localização estimada pelo IP
+      let ip_address: string | null = null;
+      let geo_country: string | null = null;
+      let geo_region: string | null = null;
+      let geo_city: string | null = null;
+      try {
+        const res = await fetch("https://ipwho.is/");
+        if (res.ok) {
+          const j: any = await res.json();
+          if (j?.success !== false) {
+            ip_address = j.ip ?? null;
+            geo_country = j.country ?? null;
+            geo_region = j.region ?? null;
+            geo_city = j.city ?? null;
+          }
+        }
+      } catch {
+        // sem internet/bloqueado — segue sem geo
+      }
+      const user_agent = typeof navigator !== "undefined" ? navigator.userAgent : null;
+
       const { error: insErr } = await supabase.from("proprietarios").insert({
         lote_id: lote.id,
         nome: nome.trim(),
@@ -145,6 +166,11 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
         chefe_casa: chefeCasa,
         qtd_moradores: qtdMoradores ? Number(qtdMoradores) : null,
         melhorias,
+        ip_address,
+        user_agent,
+        geo_country,
+        geo_region,
+        geo_city,
       });
       if (insErr) throw insErr;
 
