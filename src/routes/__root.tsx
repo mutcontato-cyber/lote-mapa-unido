@@ -88,7 +88,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", type: "image/png", href: "/__l5e/assets-v1/ad796158-87f1-433c-8f7d-7b040d7a6209/favicon-adecaf.png" },
+      { rel: "icon", type: "image/png", href: "/__l5e/assets-v1/40afd089-b793-49cc-8219-4b8bfdc661f8/favicon-adecaf.png" },
     ],
   }),
   shellComponent: RootShell,
