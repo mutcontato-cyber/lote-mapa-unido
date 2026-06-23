@@ -233,7 +233,11 @@ export type Database = {
           email: string | null
           endereco: string | null
           fracao: number
+          geo_city: string | null
+          geo_country: string | null
+          geo_region: string | null
           id: string
+          ip_address: string | null
           lote_id: string
           melhorias: Json | null
           nome: string
@@ -243,6 +247,7 @@ export type Database = {
           situacao: string | null
           telefone: string | null
           updated_at: string
+          user_agent: string | null
           whatsapp: string | null
         }
         Insert: {
@@ -256,7 +261,11 @@ export type Database = {
           email?: string | null
           endereco?: string | null
           fracao?: number
+          geo_city?: string | null
+          geo_country?: string | null
+          geo_region?: string | null
           id?: string
+          ip_address?: string | null
           lote_id: string
           melhorias?: Json | null
           nome: string
@@ -266,6 +275,7 @@ export type Database = {
           situacao?: string | null
           telefone?: string | null
           updated_at?: string
+          user_agent?: string | null
           whatsapp?: string | null
         }
         Update: {
@@ -279,7 +289,11 @@ export type Database = {
           email?: string | null
           endereco?: string | null
           fracao?: number
+          geo_city?: string | null
+          geo_country?: string | null
+          geo_region?: string | null
           id?: string
+          ip_address?: string | null
           lote_id?: string
           melhorias?: Json | null
           nome?: string
@@ -289,6 +303,7 @@ export type Database = {
           situacao?: string | null
           telefone?: string | null
           updated_at?: string
+          user_agent?: string | null
           whatsapp?: string | null
         }
         Relationships: [
