@@ -58,6 +58,11 @@ interface CadastroRow {
   quadra_nome: string;
   lote_id: string;
   moradores?: MoradorRow[];
+  ip_address?: string | null;
+  user_agent?: string | null;
+  geo_country?: string | null;
+  geo_region?: string | null;
+  geo_city?: string | null;
 }
 
 interface MoradorRow {
@@ -361,6 +366,11 @@ function AdminPage() {
         quadra_nome: p.lotes?.quadras?.nome ?? "",
         loteamento_id: p.lotes?.quadras?.loteamento_id ?? "",
         lote_id: p.lote_id,
+        ip_address: p.ip_address ?? null,
+        user_agent: p.user_agent ?? null,
+        geo_country: p.geo_country ?? null,
+        geo_region: p.geo_region ?? null,
+        geo_city: p.geo_city ?? null,
       }));
 
       const { data: mds } = await supabase.from("moradores" as any).select("*");
@@ -580,6 +590,9 @@ function AdminPage() {
       Observacoes: r.observacoes ?? "",
       DataCadastro: new Date(r.data_cadastro).toLocaleString("pt-BR"),
       Moradores: moradoresStr,
+      IP: r.ip_address ?? "",
+      Navegador: r.user_agent ?? "",
+      LocalizacaoIP: [r.geo_city, r.geo_region, r.geo_country].filter(Boolean).join(", "),
     };
   }
 
@@ -684,6 +697,9 @@ function AdminPage() {
       ["Respostas do Questionário:", formatMelhorias(c.melhorias) || "—"],
       ["Observações:", c.observacoes || "—"],
       ["Data de Cadastro:", new Date(c.data_cadastro).toLocaleString("pt-BR")],
+      ["IP do Dispositivo:", c.ip_address || "—"],
+      ["Localização estimada (IP):", [c.geo_city, c.geo_region, c.geo_country].filter(Boolean).join(", ") || "—"],
+      ["Navegador / Dispositivo:", c.user_agent || "—"],
     ];
 
     autoTable(doc, {
@@ -1045,6 +1061,7 @@ function AdminPage() {
                         <TableHead>Telefone</TableHead>
                         <TableHead>Quadra / Lote</TableHead>
                         <TableHead>Apoia</TableHead>
+                        <TableHead>IP / Localização</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1071,6 +1088,23 @@ function AdminPage() {
                               <Badge variant="destructive">Não</Badge>
                             ) : (
                               <Badge variant="outline">—</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {c.ip_address ? (
+                              <div className="space-y-0.5">
+                                <div className="font-mono">{c.ip_address}</div>
+                                <div className="text-muted-foreground">
+                                  {[c.geo_city, c.geo_region, c.geo_country].filter(Boolean).join(", ") || "—"}
+                                </div>
+                                {c.user_agent && (
+                                  <div className="text-muted-foreground truncate max-w-[220px]" title={c.user_agent}>
+                                    {c.user_agent}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
                             )}
                           </TableCell>
                           <TableCell className="text-right">
