@@ -171,7 +171,7 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
         geo_country,
         geo_region,
         geo_city,
-      });
+      } as any);
       if (insErr) throw insErr;
 
       // recompute lot status (vai ficar verde)
