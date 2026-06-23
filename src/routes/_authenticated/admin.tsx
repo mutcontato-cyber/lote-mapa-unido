@@ -697,6 +697,9 @@ function AdminPage() {
       ["Respostas do Questionário:", formatMelhorias(c.melhorias) || "—"],
       ["Observações:", c.observacoes || "—"],
       ["Data de Cadastro:", new Date(c.data_cadastro).toLocaleString("pt-BR")],
+      ["IP do Dispositivo:", c.ip_address || "—"],
+      ["Localização estimada (IP):", [c.geo_city, c.geo_region, c.geo_country].filter(Boolean).join(", ") || "—"],
+      ["Navegador / Dispositivo:", c.user_agent || "—"],
     ];
 
     autoTable(doc, {
