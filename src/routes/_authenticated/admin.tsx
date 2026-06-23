@@ -590,6 +590,9 @@ function AdminPage() {
       Observacoes: r.observacoes ?? "",
       DataCadastro: new Date(r.data_cadastro).toLocaleString("pt-BR"),
       Moradores: moradoresStr,
+      IP: r.ip_address ?? "",
+      Navegador: r.user_agent ?? "",
+      LocalizacaoIP: [r.geo_city, r.geo_region, r.geo_country].filter(Boolean).join(", "),
     };
   }
 
