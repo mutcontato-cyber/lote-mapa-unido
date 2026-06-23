@@ -165,6 +165,27 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
       }
 
 
+      // Constrói a lista completa de moradores para a mensagem
+      const todosMoradores = [
+        {
+          nome: nome.trim(),
+          telefone: telefone.trim(),
+          data_nascimento: dataNascimento,
+        },
+        ...outrosMoradores,
+      ];
+      const formatarData = (iso: string) => {
+        if (!iso) return "—";
+        const d = new Date(iso + "T00:00:00");
+        return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("pt-BR");
+      };
+      const linhasMoradores = todosMoradores
+        .map(
+          (m, i) =>
+            `${i + 1}. ${m.nome} — ${m.telefone || "—"} — ${formatarData(m.data_nascimento)}`,
+        )
+        .join("\n");
+
       // Mensagem para o morador enviar pro admin
       const linhasMelhorias = MELHORIAS_OPCOES
         .map((m) => {
@@ -182,9 +203,11 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
         `\n📞 Meu contato: ${telefone.trim()}` +
         (idade !== null ? `\n🎂 Idade: ${idade} anos` : "") +
         (chefeCasa ? `\n👤 Sou chefe da casa` : "") +
-        (qtdMoradores ? `\n🏠 Moradores na casa: ${qtdMoradores}` : "") +
+        (qtdMoradores ? `\n🏠 Pessoas na casa: ${qtdMoradores}` : "") +
+        `\n\n🏠 Moradores da residência:\n${linhasMoradores}` +
         (linhasMelhorias ? `\n\n📋 Melhorias necessárias na rua:\n${linhasMelhorias}` : "") +
         `\n\nLi e concordo com o termo de autorização da ADECAF.`;
+
 
       setConfirmado({ mensagem });
       onSaved?.();
