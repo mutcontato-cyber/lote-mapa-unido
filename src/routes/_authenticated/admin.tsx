@@ -1061,6 +1061,7 @@ function AdminPage() {
                         <TableHead>Telefone</TableHead>
                         <TableHead>Quadra / Lote</TableHead>
                         <TableHead>Apoia</TableHead>
+                        <TableHead>IP / Localização</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1087,6 +1088,23 @@ function AdminPage() {
                               <Badge variant="destructive">Não</Badge>
                             ) : (
                               <Badge variant="outline">—</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {c.ip_address ? (
+                              <div className="space-y-0.5">
+                                <div className="font-mono">{c.ip_address}</div>
+                                <div className="text-muted-foreground">
+                                  {[c.geo_city, c.geo_region, c.geo_country].filter(Boolean).join(", ") || "—"}
+                                </div>
+                                {c.user_agent && (
+                                  <div className="text-muted-foreground truncate max-w-[220px]" title={c.user_agent}>
+                                    {c.user_agent}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
                             )}
                           </TableCell>
                           <TableCell className="text-right">
