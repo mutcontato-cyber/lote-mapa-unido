@@ -37,11 +37,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setOpen((v) => !v)}>
             <Menu className="h-5 w-5" />
           </Button>
-          <Link to="/mapa" className="flex items-center gap-2">
-            <AdecafLogo className="h-10 w-10" />
-            <div className="leading-tight">
-              <div className="font-semibold">ADECAF</div>
-              <div className="text-xs text-muted-foreground -mt-0.5">Rua Digna</div>
+          <Link to="/mapa" className="flex items-center gap-3">
+            <AdecafLogo className="h-14 md:h-16 w-auto" />
+            <div className="leading-tight hidden sm:block">
+              <div className="text-xs text-muted-foreground">Rua Digna</div>
             </div>
           </Link>
           <nav className="hidden md:flex items-center gap-1 ml-6">
