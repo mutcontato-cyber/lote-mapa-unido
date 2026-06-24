@@ -386,6 +386,7 @@ export type Database = {
         Args: { secret_token: string; telefone_alvo: string }
         Returns: undefined
       }
+      disparar_aniversarios_com_fallback: { Args: never; Returns: Json }
       get_dados_aniversario: { Args: { secret_token: string }; Returns: Json }
       has_role: {
         Args: {
