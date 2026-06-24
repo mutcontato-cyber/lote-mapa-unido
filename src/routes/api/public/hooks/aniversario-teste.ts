@@ -34,8 +34,7 @@ export const Route = createFileRoute('/api/public/hooks/aniversario-teste')({
           const url = new URL(request.url);
           const numero = url.searchParams.get('numero') || '5511949043711';
           const nome = url.searchParams.get('nome') || 'Amigo(a)';
-          const out = await enviar(numero, nome);
-          return json({ ok: out.ok, ...out });
+          return json({ ...out });
         } catch (err: any) {
           return json({ ok: false, error: err?.message || String(err) }, { status: 500 });
         }
