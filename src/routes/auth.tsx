@@ -231,7 +231,12 @@ function AuthPage() {
                 </label>
               </div>
 
-              <Button className="w-full" disabled={loading} onClick={handleSignUp}>
+              <Button
+                size="lg"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-md"
+                disabled={loading}
+                onClick={handleSignUp}
+              >
                 {loading ? "Criando conta…" : "Criar conta"}
               </Button>
 
