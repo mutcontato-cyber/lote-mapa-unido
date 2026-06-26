@@ -374,14 +374,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      admin_update_profile: {
-        Args: {
-          new_full_name: string
-          new_phone: string
-          target_user_id: string
-        }
-        Returns: undefined
-      }
       apagar_msg_customizada: {
         Args: { secret_token: string; telefone_alvo: string }
         Returns: undefined
@@ -396,10 +388,6 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
-      update_lote_status: {
-        Args: { p_lote_id: string; p_status: string }
-        Returns: undefined
-      }
     }
     Enums: {
       app_role: "admin" | "coordenador" | "visitante"
