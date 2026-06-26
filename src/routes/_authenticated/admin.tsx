@@ -1193,6 +1193,9 @@ function AdminPage() {
                               <Button size="icon" variant="ghost" onClick={() => baixarUm(c)} title="Baixar Planilha Individual (CSV)">
                                 <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
                               </Button>
+                              <Button size="icon" variant="ghost" onClick={() => excluirCadastroEnviado(c)} title="Excluir cadastro">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
