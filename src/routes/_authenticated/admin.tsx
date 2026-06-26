@@ -1430,6 +1430,60 @@ function AdminPage() {
           </DialogContent>
         </Dialog>
 
+        <Dialog open={senhaGeradaOpen} onOpenChange={setSenhaGeradaOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Nova senha gerada</DialogTitle>
+              <DialogDescription>
+                Copie a senha abaixo e envie ao morador. A senha antiga não funciona mais.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              {senhaGerada && (
+                <>
+                  <div className="text-sm text-muted-foreground">
+                    Morador: <span className="font-medium text-foreground">{senhaGerada.full_name || "—"}</span>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Telefone / login: <span className="font-mono text-foreground">{senhaGerada.phone || "—"}</span>
+                  </div>
+                  <div className="rounded-md border bg-muted/40 p-3 flex items-center justify-between gap-2">
+                    <code className="text-lg font-mono tracking-wider">{senhaGerada.senha}</code>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(senhaGerada.senha);
+                        toast.success("Senha copiada");
+                      }}
+                    >
+                      Copiar
+                    </Button>
+                  </div>
+                  {senhaGerada.phone && (
+                    <Button
+                      className="w-full"
+                      variant="secondary"
+                      onClick={() => {
+                        const msg =
+                          `Olá ${senhaGerada.full_name ?? ""}, aqui é da ADECAF.\n\n` +
+                          `Sua nova senha é: *${senhaGerada.senha}*\n\n` +
+                          `Use seu telefone (${senhaGerada.phone}) e essa senha para entrar.`;
+                        window.open(waLink(senhaGerada.phone, msg), "_blank");
+                      }}
+                    >
+                      <MessageCircle className="h-4 w-4 mr-1" /> Enviar pelo WhatsApp
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setSenhaGeradaOpen(false)}>Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={editCadastroOpen} onOpenChange={setEditCadastroOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
