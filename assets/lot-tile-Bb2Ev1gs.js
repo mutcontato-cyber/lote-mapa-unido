@@ -1,0 +1,1 @@
+import{r as e}from"./useRouter-BeG5N71-.js";e();var t={sem_cadastro:`Sem cadastro`,cadastrado:`Cadastrado`,incompleto:`Cadastro incompleto`,confirmado:`Confirmou apoio`,pendencia:`Pendência`};export{t};
