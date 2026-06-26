@@ -124,6 +124,11 @@ function AdminPage() {
     );
   const deleteMoradorFn = (args: { data: { userId: string } }) =>
     invokeEdge<{ ok: true }>("admin-delete-morador", args.data);
+  const generateUserPasswordFn = (args: { data: { userId: string } }) =>
+    invokeEdge<{ senha: string; phone: string; full_name: string }>(
+      "admin-generate-user-password",
+      args.data,
+    );
   const sendEvolutionFn = (args: { data: { phone: string; message: string } }) =>
     invokeEdge<{ ok: true }>("admin-send-whatsapp", args.data);
 
