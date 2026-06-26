@@ -582,6 +582,44 @@ function AdminPage() {
     }
   }
 
+  async function excluirCadastroEnviado(c: CadastroRow) {
+    if (!confirm(`Excluir o cadastro de ${c.nome} (Quadra ${c.quadra_nome} / Lote ${c.lote_numero})? Essa ação não pode ser desfeita.`)) return;
+    try {
+      const { error: delErr } = await supabase.from("proprietarios").delete().eq("id", c.id);
+      if (delErr) throw delErr;
+
+      // Se nenhum outro proprietário sobrar para este lote, volta status para sem_cadastro
+      const { data: restantes } = await supabase
+        .from("proprietarios")
+        .select("id")
+        .eq("lote_id", c.lote_id)
+        .limit(1);
+      if (!restantes || restantes.length === 0) {
+        await supabase.from("lotes").update({ status: "sem_cadastro" }).eq("id", c.lote_id);
+      }
+
+      toast.success("Cadastro excluído com sucesso");
+      load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao excluir cadastro");
+    }
+  }
+
+  const [senhaGeradaOpen, setSenhaGeradaOpen] = useState(false);
+  const [senhaGerada, setSenhaGerada] = useState<{ senha: string; phone: string; full_name: string } | null>(null);
+
+  async function gerarSenhaUsuario(userId: string, nome: string) {
+    if (!confirm(`Gerar uma nova senha para ${nome}? A senha antiga deixará de funcionar.`)) return;
+    try {
+      const res = await generateUserPasswordFn({ data: { userId } });
+      setSenhaGerada(res);
+      setSenhaGeradaOpen(true);
+      toast.success("Nova senha gerada");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao gerar senha");
+    }
+  }
+
   function formatMelhorias(m: any): string {
     if (!m || typeof m !== "object") return "";
     return Object.entries(m)
