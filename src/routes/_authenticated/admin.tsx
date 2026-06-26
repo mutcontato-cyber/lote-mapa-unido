@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { Toaster } from "sonner";
 // Edge Functions chamadas via supabase.functions.invoke
 async function invokeEdge<T = unknown>(name: string, body: unknown): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(name, { body });
+  const { data, error } = await supabase.functions.invoke(name, { body: body as Record<string, unknown> });
   if (error) {
     // Tenta extrair mensagem mais clara do corpo do erro
     let msg = error.message;
@@ -117,9 +117,15 @@ function AdminPage() {
   const [customBdayMessage, setCustomBdayMessage] = useState("");
   const [isSavingCustom, setIsSavingCustom] = useState(false);
 
-  const generateResetFn = useServerFn(generatePasswordReset);
-  const deleteMoradorFn = useServerFn(deleteMorador);
-  const sendEvolutionFn = useServerFn(sendEvolutionWhatsApp);
+  const generateResetFn = (args: { data: { resetId: string } }) =>
+    invokeEdge<{ senha: string; phone: string; full_name: string }>(
+      "admin-reset-password",
+      args.data,
+    );
+  const deleteMoradorFn = (args: { data: { userId: string } }) =>
+    invokeEdge<{ ok: true }>("admin-delete-morador", args.data);
+  const sendEvolutionFn = (args: { data: { phone: string; message: string } }) =>
+    invokeEdge<{ ok: true }>("admin-send-whatsapp", args.data);
 
   const [bdayModalOpen, setBdayModalOpen] = useState(false);
   const [bdayUser, setBdayUser] = useState<{ id?: string; nome: string; whatsapp: string } | null>(null);

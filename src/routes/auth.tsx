@@ -32,7 +32,9 @@ export const Route = createFileRoute("/auth")({
       { name: "description", content: "Acesso à plataforma da Associação ADECAF para o abaixo-assinado de asfaltamento." },
     ],
   }),
-  validateSearch: (search: Record<string, unknown>) => ({ loteamento: search.loteamento as string | undefined }),
+  validateSearch: (search: Record<string, unknown>): { loteamento?: string } => ({
+    loteamento: typeof search.loteamento === "string" ? search.loteamento : undefined,
+  }),
   component: AuthPage,
 });
 
