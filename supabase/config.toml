@@ -1,7 +1,1 @@
 project_id = "nvzccyowzemzenspbvqt"
-
-[functions.aniversarios]
-verify_jwt = false
-
-[functions.aniversario-teste]
-verify_jwt = false
