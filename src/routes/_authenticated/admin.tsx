@@ -1378,6 +1378,14 @@ function AdminPage() {
                           <Button
                             size="icon"
                             variant="ghost"
+                            onClick={() => gerarSenhaUsuario(u.id, u.full_name)}
+                            title="Gerar nova senha"
+                          >
+                            <KeyRound className="h-4 w-4 text-amber-600" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
                             onClick={() => excluirMorador(u.id, u.full_name)}
                             title="Excluir cadastro"
                           >
