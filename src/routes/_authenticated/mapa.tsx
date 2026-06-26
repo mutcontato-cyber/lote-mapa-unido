@@ -17,7 +17,9 @@ const LOTEAMENTO_LOCK_KEY = "adecaf_loteamento_lock"; // mantido apenas como fal
 
 export const Route = createFileRoute("/_authenticated/mapa")({
   head: () => ({ meta: [{ title: "Mapa do Loteamento — ADECAF Rua Digna" }] }),
-  validateSearch: (search: Record<string, unknown>) => ({ loteamento: search.loteamento as string | undefined }),
+  validateSearch: (search: Record<string, unknown>): { loteamento?: string } => ({
+    loteamento: typeof search.loteamento === "string" ? search.loteamento : undefined,
+  }),
   component: MapaPage,
 });
 
