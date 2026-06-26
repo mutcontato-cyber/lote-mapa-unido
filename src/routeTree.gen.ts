@@ -17,8 +17,6 @@ import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authentic
 import { Route as AuthenticatedMapaRouteImport } from './routes/_authenticated/mapa'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
-import { Route as ApiPublicHooksAniversariosRouteImport } from './routes/api/public/hooks/aniversarios'
-import { Route as ApiPublicHooksAniversarioTesteRouteImport } from './routes/api/public/hooks/aniversario-teste'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -59,18 +57,6 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiPublicHooksAniversariosRoute =
-  ApiPublicHooksAniversariosRouteImport.update({
-    id: '/api/public/hooks/aniversarios',
-    path: '/api/public/hooks/aniversarios',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksAniversarioTesteRoute =
-  ApiPublicHooksAniversarioTesteRouteImport.update({
-    id: '/api/public/hooks/aniversario-teste',
-    path: '/api/public/hooks/aniversario-teste',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -80,8 +66,6 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/mapa': typeof AuthenticatedMapaRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
-  '/api/public/hooks/aniversario-teste': typeof ApiPublicHooksAniversarioTesteRoute
-  '/api/public/hooks/aniversarios': typeof ApiPublicHooksAniversariosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -91,8 +75,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/mapa': typeof AuthenticatedMapaRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
-  '/api/public/hooks/aniversario-teste': typeof ApiPublicHooksAniversarioTesteRoute
-  '/api/public/hooks/aniversarios': typeof ApiPublicHooksAniversariosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -104,8 +86,6 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/mapa': typeof AuthenticatedMapaRoute
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
-  '/api/public/hooks/aniversario-teste': typeof ApiPublicHooksAniversarioTesteRoute
-  '/api/public/hooks/aniversarios': typeof ApiPublicHooksAniversariosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -117,8 +97,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/mapa'
     | '/relatorios'
-    | '/api/public/hooks/aniversario-teste'
-    | '/api/public/hooks/aniversarios'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -128,8 +106,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/mapa'
     | '/relatorios'
-    | '/api/public/hooks/aniversario-teste'
-    | '/api/public/hooks/aniversarios'
   id:
     | '__root__'
     | '/'
@@ -140,8 +116,6 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/mapa'
     | '/_authenticated/relatorios'
-    | '/api/public/hooks/aniversario-teste'
-    | '/api/public/hooks/aniversarios'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -149,8 +123,6 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  ApiPublicHooksAniversarioTesteRoute: typeof ApiPublicHooksAniversarioTesteRoute
-  ApiPublicHooksAniversariosRoute: typeof ApiPublicHooksAniversariosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -211,20 +183,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/public/hooks/aniversarios': {
-      id: '/api/public/hooks/aniversarios'
-      path: '/api/public/hooks/aniversarios'
-      fullPath: '/api/public/hooks/aniversarios'
-      preLoaderRoute: typeof ApiPublicHooksAniversariosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/aniversario-teste': {
-      id: '/api/public/hooks/aniversario-teste'
-      path: '/api/public/hooks/aniversario-teste'
-      fullPath: '/api/public/hooks/aniversario-teste'
-      preLoaderRoute: typeof ApiPublicHooksAniversarioTesteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -250,8 +208,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  ApiPublicHooksAniversarioTesteRoute: ApiPublicHooksAniversarioTesteRoute,
-  ApiPublicHooksAniversariosRoute: ApiPublicHooksAniversariosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
