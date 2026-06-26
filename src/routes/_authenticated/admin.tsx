@@ -124,6 +124,11 @@ function AdminPage() {
     );
   const deleteMoradorFn = (args: { data: { userId: string } }) =>
     invokeEdge<{ ok: true }>("admin-delete-morador", args.data);
+  const generateUserPasswordFn = (args: { data: { userId: string } }) =>
+    invokeEdge<{ senha: string; phone: string; full_name: string }>(
+      "admin-generate-user-password",
+      args.data,
+    );
   const sendEvolutionFn = (args: { data: { phone: string; message: string } }) =>
     invokeEdge<{ ok: true }>("admin-send-whatsapp", args.data);
 
@@ -574,6 +579,44 @@ function AdminPage() {
       load();
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao excluir");
+    }
+  }
+
+  async function excluirCadastroEnviado(c: CadastroRow) {
+    if (!confirm(`Excluir o cadastro de ${c.nome} (Quadra ${c.quadra_nome} / Lote ${c.lote_numero})? Essa ação não pode ser desfeita.`)) return;
+    try {
+      const { error: delErr } = await supabase.from("proprietarios").delete().eq("id", c.id);
+      if (delErr) throw delErr;
+
+      // Se nenhum outro proprietário sobrar para este lote, volta status para sem_cadastro
+      const { data: restantes } = await supabase
+        .from("proprietarios")
+        .select("id")
+        .eq("lote_id", c.lote_id)
+        .limit(1);
+      if (!restantes || restantes.length === 0) {
+        await supabase.from("lotes").update({ status: "sem_cadastro" }).eq("id", c.lote_id);
+      }
+
+      toast.success("Cadastro excluído com sucesso");
+      load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao excluir cadastro");
+    }
+  }
+
+  const [senhaGeradaOpen, setSenhaGeradaOpen] = useState(false);
+  const [senhaGerada, setSenhaGerada] = useState<{ senha: string; phone: string; full_name: string } | null>(null);
+
+  async function gerarSenhaUsuario(userId: string, nome: string) {
+    if (!confirm(`Gerar uma nova senha para ${nome}? A senha antiga deixará de funcionar.`)) return;
+    try {
+      const res = await generateUserPasswordFn({ data: { userId } });
+      setSenhaGerada(res);
+      setSenhaGeradaOpen(true);
+      toast.success("Nova senha gerada");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao gerar senha");
     }
   }
 
@@ -1150,6 +1193,9 @@ function AdminPage() {
                               <Button size="icon" variant="ghost" onClick={() => baixarUm(c)} title="Baixar Planilha Individual (CSV)">
                                 <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
                               </Button>
+                              <Button size="icon" variant="ghost" onClick={() => excluirCadastroEnviado(c)} title="Excluir cadastro">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -1332,6 +1378,14 @@ function AdminPage() {
                           <Button
                             size="icon"
                             variant="ghost"
+                            onClick={() => gerarSenhaUsuario(u.id, u.full_name)}
+                            title="Gerar nova senha"
+                          >
+                            <KeyRound className="h-4 w-4 text-amber-600" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
                             onClick={() => excluirMorador(u.id, u.full_name)}
                             title="Excluir cadastro"
                           >
@@ -1372,6 +1426,60 @@ function AdminPage() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditUserOpen(false)}>Cancelar</Button>
               <Button onClick={saveEditUser}>Salvar Alterações</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={senhaGeradaOpen} onOpenChange={setSenhaGeradaOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Nova senha gerada</DialogTitle>
+              <DialogDescription>
+                Copie a senha abaixo e envie ao morador. A senha antiga não funciona mais.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              {senhaGerada && (
+                <>
+                  <div className="text-sm text-muted-foreground">
+                    Morador: <span className="font-medium text-foreground">{senhaGerada.full_name || "—"}</span>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Telefone / login: <span className="font-mono text-foreground">{senhaGerada.phone || "—"}</span>
+                  </div>
+                  <div className="rounded-md border bg-muted/40 p-3 flex items-center justify-between gap-2">
+                    <code className="text-lg font-mono tracking-wider">{senhaGerada.senha}</code>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(senhaGerada.senha);
+                        toast.success("Senha copiada");
+                      }}
+                    >
+                      Copiar
+                    </Button>
+                  </div>
+                  {senhaGerada.phone && (
+                    <Button
+                      className="w-full"
+                      variant="secondary"
+                      onClick={() => {
+                        const msg =
+                          `Olá ${senhaGerada.full_name ?? ""}, aqui é da ADECAF.\n\n` +
+                          `Sua nova senha é: *${senhaGerada.senha}*\n\n` +
+                          `Use seu telefone (${senhaGerada.phone}) e essa senha para entrar.`;
+                        window.open(waLink(senhaGerada.phone, msg), "_blank");
+                      }}
+                    >
+                      <MessageCircle className="h-4 w-4 mr-1" /> Enviar pelo WhatsApp
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setSenhaGeradaOpen(false)}>Fechar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
