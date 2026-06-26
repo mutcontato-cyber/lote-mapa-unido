@@ -524,11 +524,10 @@ function AdminPage() {
   async function saveEditUser() {
     if (!editUser) return;
     try {
-      const { error } = await supabase.rpc('admin_update_profile', {
-        target_user_id: editUser.id,
-        new_full_name: editUser.full_name,
-        new_phone: editUser.phone
-      });
+      const { error } = await supabase
+        .from('profiles')
+        .update({ full_name: editUser.full_name, phone: editUser.phone })
+        .eq('id', editUser.id);
       if (error) throw error;
 
       // Sincroniza o número atualizado para a ficha do lote (que alimenta os aniversários)
