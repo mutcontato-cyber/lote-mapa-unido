@@ -17,8 +17,27 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { toast } from "sonner";
 import { Toaster } from "sonner";
-import { useServerFn } from "@tanstack/react-start";
-import { generatePasswordReset, deleteMorador, sendEvolutionWhatsApp } from "@/lib/admin.functions";
+// Edge Functions chamadas via supabase.functions.invoke
+async function invokeEdge<T = unknown>(name: string, body: unknown): Promise<T> {
+  const { data, error } = await supabase.functions.invoke(name, { body });
+  if (error) {
+    // Tenta extrair mensagem mais clara do corpo do erro
+    let msg = error.message;
+    try {
+      const ctx: any = (error as any).context;
+      if (ctx?.body) {
+        const txt = typeof ctx.body === "string" ? ctx.body : await new Response(ctx.body).text();
+        const j = JSON.parse(txt);
+        if (j?.error) msg = j.error;
+      }
+    } catch { /* noop */ }
+    throw new Error(msg);
+  }
+  if (data && typeof data === "object" && "error" in (data as any) && (data as any).error) {
+    throw new Error((data as any).error);
+  }
+  return data as T;
+}
 import { ADMIN_NOME, waLink } from "@/lib/admin-config";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
