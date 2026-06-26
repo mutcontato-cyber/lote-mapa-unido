@@ -475,15 +475,38 @@ function AdminPage() {
 
   async function excluirLoteamento() {
     if (!loteamentoId) return;
-    if (!confirm("AVISO: Excluir este loteamento? Só será possível se todas as quadras dele já tiverem sido apagadas primeiro.")) return;
-    
-    const { error } = await supabase.from("loteamentos").delete().eq("id", loteamentoId);
-    if (error) {
-      toast.error("Erro ao excluir: " + error.message);
-      return;
+    if (!confirm("AVISO: Excluir este loteamento? Todas as quadras, lotes, cadastros e moradores vinculados também serão removidos. Essa ação não pode ser desfeita.")) return;
+
+    // Busca todas as quadras do loteamento
+    const { data: quadrasDoLot, error: qErr } = await supabase
+      .from("quadras").select("id").eq("loteamento_id", loteamentoId);
+    if (qErr) { toast.error("Erro ao buscar quadras: " + qErr.message); return; }
+    const quadraIds = (quadrasDoLot ?? []).map((q: any) => q.id);
+
+    if (quadraIds.length > 0) {
+      // Busca lotes dessas quadras
+      const { data: lotesDoLot, error: lErr } = await supabase
+        .from("lotes").select("id").in("quadra_id", quadraIds);
+      if (lErr) { toast.error("Erro ao buscar lotes: " + lErr.message); return; }
+      const loteIds = (lotesDoLot ?? []).map((l: any) => l.id);
+
+      if (loteIds.length > 0) {
+        const { error: mErr } = await supabase.from("moradores").delete().in("lote_id", loteIds);
+        if (mErr) { toast.error("Erro ao excluir moradores: " + mErr.message); return; }
+        const { error: pErr } = await supabase.from("proprietarios").delete().in("lote_id", loteIds);
+        if (pErr) { toast.error("Erro ao excluir cadastros: " + pErr.message); return; }
+        const { error: loErr } = await supabase.from("lotes").delete().in("id", loteIds);
+        if (loErr) { toast.error("Erro ao excluir lotes: " + loErr.message); return; }
+      }
+
+      const { error: qDelErr } = await supabase.from("quadras").delete().in("id", quadraIds);
+      if (qDelErr) { toast.error("Erro ao excluir quadras: " + qDelErr.message); return; }
     }
-    
-    toast.success("Loteamento excluído.");
+
+    const { error } = await supabase.from("loteamentos").delete().eq("id", loteamentoId);
+    if (error) { toast.error("Erro ao excluir: " + error.message); return; }
+
+    toast.success("Loteamento excluído com sucesso.");
     setLoteamentoId("");
     load();
   }
