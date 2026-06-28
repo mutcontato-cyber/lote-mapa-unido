@@ -108,6 +108,8 @@ function MapaPage() {
     if (!search) return false;
     if (l.numero.toLowerCase().includes(search)) return true;
     if (qd.nome.toLowerCase().includes(search)) return true;
+    // Por privacidade, visitantes não podem pesquisar por nome/telefone
+    if (!isStaff) return false;
     const pp = propsByLote.get(l.id) ?? [];
     return pp.some(
       (p) =>
@@ -203,11 +205,18 @@ function MapaPage() {
         </div>
 
         <Card className="p-4">
-          <div className="flex flex-wrap gap-4 text-sm">
-            <Legend status="sem_cadastro" count={totals.sem_cadastro} />
-            <Legend status="cadastrado" count={totals.cadastrado} />
-            <Legend status="confirmado" count={totals.confirmado} />
-          </div>
+          {isStaff ? (
+            <div className="flex flex-wrap gap-4 text-sm">
+              <Legend status="sem_cadastro" count={totals.sem_cadastro} />
+              <Legend status="cadastrado" count={totals.cadastrado} />
+              <Legend status="confirmado" count={totals.confirmado} />
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-4 text-sm">
+              <LegendCustom color="var(--status-sem)" label="Lote livre" count={totals.sem_cadastro} />
+              <LegendCustom color="#3b82f6" label="Lote ocupado" count={totals.cadastrado + totals.confirmado} />
+            </div>
+          )}
         </Card>
 
         <Card className="p-5 bg-gradient-to-r from-primary/10 via-accent/30 to-primary/10 border-primary/30">
@@ -248,6 +257,7 @@ function MapaPage() {
                     isHighlighted={(l) => isHighlighted(l, qd)}
                     onLoteClick={setSelected}
                     propsByLote={propsByLote}
+                    publicView={!isStaff}
                   />
                 );
               })}
@@ -271,6 +281,7 @@ function MapaPage() {
                     isHighlighted={(l) => isHighlighted(l, qd)}
                     onLoteClick={setSelected}
                     propsByLote={propsByLote}
+                    publicView={!isStaff}
                   />
                 );
               })}
@@ -291,6 +302,7 @@ function MapaPage() {
                   isHighlighted={(l) => isHighlighted(l, qd)}
                   onLoteClick={setSelected}
                   propsByLote={propsByLote}
+                  publicView={!isStaff}
                 />
               ))}
             </div>
