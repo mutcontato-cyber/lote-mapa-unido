@@ -220,8 +220,7 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
       } as any);
       if (insErr) throw insErr;
 
-      // recompute lot status (vai ficar verde)
-      await recomputeLoteStatus(lote.id);
+      // O status do lote é recalculado automaticamente pelo trigger no banco.
 
       // Salvar dados das outras pessoas que moram no lote
       if (outrosMoradores.length > 0) {
@@ -312,7 +311,7 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
       const { error } = await supabase.from("proprietarios").delete().eq("id", id);
       if (error) throw error;
       toast.success("Cadastro do lote removido!");
-      await recomputeLoteStatus(lote.id);
+      // Status recalculado pelo trigger no banco.
       onSaved?.();
     } catch (e: any) {
       toast.error(e.message || "Erro ao excluir");
