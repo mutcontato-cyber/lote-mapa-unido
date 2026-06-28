@@ -108,6 +108,8 @@ function MapaPage() {
     if (!search) return false;
     if (l.numero.toLowerCase().includes(search)) return true;
     if (qd.nome.toLowerCase().includes(search)) return true;
+    // Por privacidade, visitantes não podem pesquisar por nome/telefone
+    if (!isStaff) return false;
     const pp = propsByLote.get(l.id) ?? [];
     return pp.some(
       (p) =>
@@ -203,11 +205,18 @@ function MapaPage() {
         </div>
 
         <Card className="p-4">
-          <div className="flex flex-wrap gap-4 text-sm">
-            <Legend status="sem_cadastro" count={totals.sem_cadastro} />
-            <Legend status="cadastrado" count={totals.cadastrado} />
-            <Legend status="confirmado" count={totals.confirmado} />
-          </div>
+          {isStaff ? (
+            <div className="flex flex-wrap gap-4 text-sm">
+              <Legend status="sem_cadastro" count={totals.sem_cadastro} />
+              <Legend status="cadastrado" count={totals.cadastrado} />
+              <Legend status="confirmado" count={totals.confirmado} />
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-4 text-sm">
+              <LegendCustom color="var(--status-sem)" label="Lote livre" count={totals.sem_cadastro} />
+              <LegendCustom color="#3b82f6" label="Lote ocupado" count={totals.cadastrado + totals.confirmado} />
+            </div>
+          )}
         </Card>
 
         <Card className="p-5 bg-gradient-to-r from-primary/10 via-accent/30 to-primary/10 border-primary/30">
@@ -248,6 +257,7 @@ function MapaPage() {
                     isHighlighted={(l) => isHighlighted(l, qd)}
                     onLoteClick={setSelected}
                     propsByLote={propsByLote}
+                    publicView={!isStaff}
                   />
                 );
               })}
@@ -271,6 +281,7 @@ function MapaPage() {
                     isHighlighted={(l) => isHighlighted(l, qd)}
                     onLoteClick={setSelected}
                     propsByLote={propsByLote}
+                    publicView={!isStaff}
                   />
                 );
               })}
@@ -291,6 +302,7 @@ function MapaPage() {
                   isHighlighted={(l) => isHighlighted(l, qd)}
                   onLoteClick={setSelected}
                   propsByLote={propsByLote}
+                  publicView={!isStaff}
                 />
               ))}
             </div>
@@ -329,6 +341,7 @@ function QuadraCard({
   isHighlighted,
   onLoteClick,
   propsByLote,
+  publicView,
 }: {
   quadra: Quadra;
   lotes: Lote[];
@@ -336,6 +349,7 @@ function QuadraCard({
   isHighlighted: (l: Lote) => boolean;
   onLoteClick: (l: Lote) => void;
   propsByLote: Map<string, Proprietario[]>;
+  publicView?: boolean;
 }) {
   // Linha de cima: primeira metade (esq → dir). Linha de baixo: segunda metade (dir → esq).
   const half = Math.ceil(lotes.length / 2);
@@ -361,8 +375,8 @@ function QuadraCard({
         <div className="grid grid-cols-[auto_1fr_auto] items-stretch gap-0 my-1">
           <StreetLabel label={streets.w} direction="v" />
           <div className="flex flex-col gap-0.5 px-1 py-1 bg-[oklch(0.93_0.05_140)] border-y-2 border-[oklch(0.55_0.12_140)]">
-            <Row lotes={topRow} isHighlighted={isHighlighted} onClick={onLoteClick} propsByLote={propsByLote} />
-            <Row lotes={bottomRow} isHighlighted={isHighlighted} onClick={onLoteClick} propsByLote={propsByLote} />
+            <Row lotes={topRow} isHighlighted={isHighlighted} onClick={onLoteClick} propsByLote={propsByLote} publicView={publicView} />
+            <Row lotes={bottomRow} isHighlighted={isHighlighted} onClick={onLoteClick} propsByLote={propsByLote} publicView={publicView} />
           </div>
           <StreetLabel label={streets.e} direction="v" />
         </div>
@@ -397,20 +411,27 @@ function Row({
   isHighlighted,
   onClick,
   propsByLote,
+  publicView,
 }: {
   lotes: Lote[];
   isHighlighted: (l: Lote) => boolean;
   onClick: (l: Lote) => void;
   propsByLote: Map<string, Proprietario[]>;
+  publicView?: boolean;
 }) {
   return (
     <div className="flex gap-0.5">
       {lotes.map((l) => {
         const pr = propsByLote.get(l.id) || [];
         const fracaoTotal = pr.reduce((acc, p) => acc + Number(p.fracao || 0), 0);
-        let bg = `var(--status-${l.status === "sem_cadastro" ? "sem" : l.status})`;
-        
-        if (fracaoTotal > 0 && fracaoTotal < 100) {
+        // No modo público (visitante) o lote só revela se está livre ou ocupado (azul),
+        // sem indicar quem cadastrou nem nuances de status.
+        const ocupado = pr.length > 0;
+        const corBase = publicView
+          ? (ocupado ? "#3b82f6" : "var(--status-sem)")
+          : `var(--status-${l.status === "sem_cadastro" ? "sem" : l.status})`;
+        let bg = corBase;
+        if (!publicView && fracaoTotal > 0 && fracaoTotal < 100) {
           bg = `linear-gradient(90deg, var(--status-${l.status === "sem_cadastro" ? "sem" : l.status}) ${fracaoTotal}%, var(--status-sem) ${fracaoTotal}%)`;
         }
 
@@ -423,7 +444,7 @@ function Row({
             className={cn(
               "w-6 h-9 sm:w-7 sm:h-11 text-[9px] sm:text-[10px] font-semibold rounded-sm border border-black/10 flex items-center justify-center transition-all hover:scale-110 hover:z-10 hover:shadow-md hover:ring-2 hover:ring-primary",
               isHighlighted(l) && "ring-2 ring-primary ring-offset-1 scale-110 z-10",
-              (l.status === "confirmado" || l.status === "cadastrado") ? "text-white" : "text-foreground/80",
+              (publicView ? ocupado : (l.status === "confirmado" || l.status === "cadastrado")) ? "text-white" : "text-foreground/80",
             )}
           >
             {l.numero.padStart(2, "0")}
@@ -442,6 +463,16 @@ function Legend({ status, count }: { status: LoteStatus; count: number }) {
         style={{ background: `var(--status-${status === "sem_cadastro" ? "sem" : status})` }}
       />
       <span className="text-muted-foreground">{STATUS_LABEL[status]}</span>
+      <span className="font-semibold">{count}</span>
+    </div>
+  );
+}
+
+function LegendCustom({ color, label, count }: { color: string; label: string; count: number }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="w-4 h-4 rounded border" style={{ background: color }} />
+      <span className="text-muted-foreground">{label}</span>
       <span className="font-semibold">{count}</span>
     </div>
   );
