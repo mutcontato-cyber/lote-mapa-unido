@@ -130,7 +130,6 @@ function MapaPage() {
     for (const l of lotes) {
       const currentProps = propsByLote.get(l.id) ?? [];
       const st = deriveStatus(currentProps);
-      l.status = st; // Atualiza o lote localmente para o mapa renderizar com a cor certa
       counts[st]++;
     }
     return counts;
