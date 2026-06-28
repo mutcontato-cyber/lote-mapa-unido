@@ -128,13 +128,10 @@ function MapaPage() {
       pendencia: 0,
     };
     for (const l of lotes) {
-      const currentProps = propsByLote.get(l.id) ?? [];
-      const st = deriveStatus(currentProps);
-      l.status = st; // Atualiza o lote localmente para o mapa renderizar com a cor certa
-      counts[st]++;
+      counts[l.status]++;
     }
     return counts;
-  }, [lotes, propsByLote]);
+  }, [lotes]);
 
   const lotesByQuadra = useMemo(() => {
     const m = new Map<string, Lote[]>();
@@ -212,9 +209,9 @@ function MapaPage() {
               <Legend status="confirmado" count={totals.confirmado} />
             </div>
           ) : (
-            <div className="flex flex-wrap gap-4 text-sm">
+          <div className="flex flex-wrap gap-4 text-sm">
               <LegendCustom color="var(--status-sem)" label="Lote livre" count={totals.sem_cadastro} />
-              <LegendCustom color="#3b82f6" label="Lote ocupado" count={totals.cadastrado + totals.confirmado} />
+              <LegendCustom color="#3b82f6" label="Lote ocupado" count={totals.cadastrado + totals.confirmado + totals.incompleto + totals.pendencia} />
             </div>
           )}
         </Card>
@@ -425,8 +422,9 @@ function Row({
         const pr = propsByLote.get(l.id) || [];
         const fracaoTotal = pr.reduce((acc, p) => acc + Number(p.fracao || 0), 0);
         // No modo público (visitante) o lote só revela se está livre ou ocupado (azul),
-        // sem indicar quem cadastrou nem nuances de status.
-        const ocupado = pr.length > 0;
+        // sem indicar quem cadastrou nem nuances de status. Usamos a coluna status do lote,
+        // que já é mantida atualizada, evitando a necessidade de ler dados privados.
+        const ocupado = publicView ? l.status !== "sem_cadastro" : pr.length > 0;
         const corBase = publicView
           ? (ocupado ? "#3b82f6" : "var(--status-sem)")
           : `var(--status-${l.status === "sem_cadastro" ? "sem" : l.status})`;
