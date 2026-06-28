@@ -437,7 +437,15 @@ function Row({
         return (
           <button
             key={l.id}
-            onClick={() => onClick(l)}
+            onClick={() => {
+              if (publicView && ocupado) {
+                toast.info("Lote já ocupado", {
+                  description: "Este lote já possui cadastro e não pode ser alterado.",
+                });
+                return;
+              }
+              onClick(l);
+            }}
             title={`Lote ${l.numero}`}
             style={{ background: bg }}
             className={cn(
