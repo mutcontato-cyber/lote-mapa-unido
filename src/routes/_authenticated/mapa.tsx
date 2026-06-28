@@ -9,6 +9,7 @@ import { fetchLoteamentos, fetchLotes, fetchProprietarios, fetchQuadras, deriveS
 import { supabase } from "@/integrations/supabase/client";
 import { Search } from "lucide-react";
 import { Toaster } from "sonner";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
@@ -436,7 +437,15 @@ function Row({
         return (
           <button
             key={l.id}
-            onClick={() => onClick(l)}
+            onClick={() => {
+              if (publicView && ocupado) {
+                toast.info("Lote já ocupado", {
+                  description: "Este lote já possui cadastro e não pode ser alterado.",
+                });
+                return;
+              }
+              onClick(l);
+            }}
             title={`Lote ${l.numero}`}
             style={{ background: bg }}
             className={cn(
