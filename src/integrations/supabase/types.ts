@@ -53,6 +53,7 @@ export type Database = {
       lotes: {
         Row: {
           created_at: string
+          fracao_ocupada: number
           id: string
           numero: string
           observacoes: string | null
@@ -62,6 +63,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          fracao_ocupada?: number
           id?: string
           numero: string
           observacoes?: string | null
@@ -71,6 +73,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          fracao_ocupada?: number
           id?: string
           numero?: string
           observacoes?: string | null
