@@ -353,7 +353,7 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
           </div>
         ) : (
           <>
-        {jaApoiam.length > 0 && (
+        {jaApoiam.length > 0 && isStaff && (
           <div className="rounded-md border bg-muted/40 p-3 text-sm">
             <div className="font-medium mb-1 flex items-center gap-1">
               <CheckCircle2 className="h-4 w-4 text-[var(--status-confirmado)]" />
@@ -392,6 +392,15 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
           </div>
         )}
 
+        {jaApoiam.length > 0 && !isStaff && (
+          <div className="rounded-md border bg-muted/40 p-3 text-sm flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-[var(--status-confirmado)]" />
+            <span>
+              Este lote já está <strong>ocupado</strong>. Os dados dos moradores são privados e só ficam visíveis para a administração.
+            </span>
+          </div>
+        )}
+
         {jaCadastradoGlobal && !isStaff && (
           <Alert variant="destructive">
             <AlertDescription className="text-xs">
@@ -418,11 +427,9 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
           <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
             <div>
               <Label className="text-xs">Data de nascimento</Label>
-              <Input
-                type="date"
+              <DateBRInput
                 value={dataNascimento}
-                onChange={(e) => setDataNascimento(e.target.value)}
-                max={new Date().toISOString().slice(0, 10)}
+                onChange={(iso) => setDataNascimento(iso)}
               />
             </div>
             <div className="text-xs text-muted-foreground pb-2 whitespace-nowrap">
