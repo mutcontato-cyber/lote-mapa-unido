@@ -212,9 +212,9 @@ function MapaPage() {
               <Legend status="confirmado" count={totals.confirmado} />
             </div>
           ) : (
-            <div className="flex flex-wrap gap-4 text-sm">
+          <div className="flex flex-wrap gap-4 text-sm">
               <LegendCustom color="var(--status-sem)" label="Lote livre" count={totals.sem_cadastro} />
-              <LegendCustom color="#3b82f6" label="Lote ocupado" count={totals.cadastrado + totals.confirmado} />
+              <LegendCustom color="#3b82f6" label="Lote ocupado" count={totals.cadastrado + totals.confirmado + totals.incompleto + totals.pendencia} />
             </div>
           )}
         </Card>
