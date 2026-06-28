@@ -388,6 +388,10 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      recalcular_status_lote: {
+        Args: { p_lote_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "coordenador" | "visitante"
