@@ -134,6 +134,17 @@ function MapaPage() {
     return counts;
   }, [lotes]);
 
+  // Soma das frações ocupadas (em "lotes"): cada 100% = 1 lote.
+  // Permite contagem fracionária como 3,5 quando meio lote foi cadastrado.
+  const ocupadoFracionado = useMemo(() => {
+    let sum = 0;
+    for (const l of lotes) sum += Number(l.fracao_ocupada ?? 0) / 100;
+    return sum;
+  }, [lotes]);
+  const livreFracionado = Math.max(0, lotes.length - ocupadoFracionado);
+  const fmtFrac = (n: number) =>
+    Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ",");
+
   const lotesByQuadra = useMemo(() => {
     const m = new Map<string, Lote[]>();
     for (const l of lotes) {
@@ -211,8 +222,8 @@ function MapaPage() {
             </div>
           ) : (
           <div className="flex flex-wrap gap-4 text-sm">
-              <LegendCustom color="var(--status-sem)" label="Lote livre" count={totals.sem_cadastro} />
-              <LegendCustom color="#3b82f6" label="Lote ocupado" count={totals.cadastrado + totals.confirmado + totals.incompleto + totals.pendencia} />
+              <LegendCustom color="var(--status-sem)" label="Lote livre" count={fmtFrac(livreFracionado)} />
+              <LegendCustom color="#3b82f6" label="Lote ocupado" count={fmtFrac(ocupadoFracionado)} />
             </div>
           )}
         </Card>
@@ -227,8 +238,8 @@ function MapaPage() {
               </p>
             </div>
             <div className="text-sm text-muted-foreground md:text-right">
-              <div><strong className="text-foreground">{totals.confirmado + totals.cadastrado}</strong> de {lotes.length} lotes já apoiam</div>
-              <div className="text-xs">Faltam {lotes.length - (totals.confirmado + totals.cadastrado)} para o 100%</div>
+              <div><strong className="text-foreground">{fmtFrac(ocupadoFracionado)}</strong> de {lotes.length} lotes já apoiam</div>
+              <div className="text-xs">Faltam {fmtFrac(livreFracionado)} para o 100%</div>
             </div>
           </div>
         </Card>
@@ -421,16 +432,20 @@ function Row({
     <div className="flex gap-0.5">
       {lotes.map((l) => {
         const pr = propsByLote.get(l.id) || [];
-        const fracaoTotal = pr.reduce((acc, p) => acc + Number(p.fracao || 0), 0);
+        const fracaoFromProps = pr.reduce((acc, p) => acc + Number(p.fracao || 0), 0);
+        // Para visitantes (sem acesso a proprietarios), usa a coluna pública fracao_ocupada do lote.
+        const fracaoTotal = publicView ? Number(l.fracao_ocupada ?? 0) : fracaoFromProps;
         // No modo público (visitante) o lote só revela se está livre ou ocupado (azul),
         // sem indicar quem cadastrou nem nuances de status. Usamos a coluna status do lote,
         // que já é mantida atualizada, evitando a necessidade de ler dados privados.
-        const ocupado = publicView ? l.status !== "sem_cadastro" : pr.length > 0;
+        const ocupado = publicView ? fracaoTotal > 0 : pr.length > 0;
         const corBase = publicView
           ? (ocupado ? "#3b82f6" : "var(--status-sem)")
           : `var(--status-${l.status === "sem_cadastro" ? "sem" : l.status})`;
         let bg = corBase;
-        if (!publicView && fracaoTotal > 0 && fracaoTotal < 100) {
+        if (publicView && fracaoTotal > 0 && fracaoTotal < 99.5) {
+          bg = `linear-gradient(180deg, #3b82f6 ${fracaoTotal}%, var(--status-sem) ${fracaoTotal}%)`;
+        } else if (!publicView && fracaoTotal > 0 && fracaoTotal < 100) {
           bg = `linear-gradient(90deg, var(--status-${l.status === "sem_cadastro" ? "sem" : l.status}) ${fracaoTotal}%, var(--status-sem) ${fracaoTotal}%)`;
         }
 
@@ -438,7 +453,7 @@ function Row({
           <button
             key={l.id}
             onClick={() => {
-              if (publicView && ocupado) {
+              if (publicView && fracaoTotal >= 99.5) {
                 toast.info("Lote já ocupado", {
                   description: "Este lote já possui cadastro e não pode ser alterado.",
                 });
@@ -475,7 +490,7 @@ function Legend({ status, count }: { status: LoteStatus; count: number }) {
   );
 }
 
-function LegendCustom({ color, label, count }: { color: string; label: string; count: number }) {
+function LegendCustom({ color, label, count }: { color: string; label: string; count: number | string }) {
   return (
     <div className="flex items-center gap-2">
       <div className="w-4 h-4 rounded border" style={{ background: color }} />

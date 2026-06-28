@@ -21,6 +21,7 @@ export interface Lote {
   numero: string;
   status: LoteStatus;
   observacoes: string | null;
+  fracao_ocupada?: number;
 }
 
 export interface Proprietario {
