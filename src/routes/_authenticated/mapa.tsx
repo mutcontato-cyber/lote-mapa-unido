@@ -193,7 +193,7 @@ function MapaPage() {
               )}
             </div>
             <p className="text-sm text-muted-foreground">
-              Encontre seu lote no mapa e clique para apoiar o asfaltamento da Rua. Os lotes verdes já apoiam.
+              Encontre seu lote no mapa e clique para apoiar o asfaltamento da Rua. Lotes livres em cinza e ocupados em azul.
             </p>
           </div>
           <div className="flex items-center gap-2">

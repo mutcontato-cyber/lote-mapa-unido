@@ -393,23 +393,30 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
         )}
 
         {jaApoiam.length > 0 && !isStaff && (
-          <div className="rounded-md border bg-muted/40 p-3 text-sm flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-[var(--status-confirmado)]" />
-            <span>
-              Este lote já está <strong>ocupado</strong>. Os dados dos moradores são privados e só ficam visíveis para a administração.
-            </span>
+          <div className="rounded-md border bg-muted/40 p-4 text-sm flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-[var(--status-confirmado)]" />
+              <span>
+                Este lote já está <strong>ocupado</strong>. Os dados dos moradores são privados e só ficam visíveis para a administração.
+              </span>
+            </div>
+            <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full">
+              Fechar
+            </Button>
           </div>
         )}
 
-        {jaCadastradoGlobal && !isStaff && (
-          <Alert variant="destructive">
-            <AlertDescription className="text-xs">
-              Você já possui um cadastro no sistema. Cada morador só pode preencher 1 vez em apenas um lote.
-            </AlertDescription>
-          </Alert>
-        )}
+        {!(jaApoiam.length > 0 && !isStaff) && (
+          <div className="contents">
+            {jaCadastradoGlobal && !isStaff && (
+              <Alert variant="destructive">
+                <AlertDescription className="text-xs">
+                  Você já possui um cadastro no sistema. Cada morador só pode preencher 1 vez em apenas um lote.
+                </AlertDescription>
+              </Alert>
+            )}
 
-        <div className="space-y-3">
+            <div className="space-y-3">
           <div>
             <Label className="text-xs">Seu nome completo</Label>
             <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Maria Silva" />
@@ -595,9 +602,11 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
             {loading ? "Enviando…" : "Confirmar apoio 💚"}
           </Button>
         </DialogFooter>
-          </>
+          </div>
         )}
-      </DialogContent>
+      </>
+    )}
+  </DialogContent>
     </Dialog>
   );
 }
