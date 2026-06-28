@@ -24,6 +24,7 @@ import { TERMO_TITULO, TERMO_TEXTO, TERMO_CHECKBOX } from "@/lib/termo";
 import { ADMIN_EMAIL, ADMIN_PHONE, ADMIN_WHATSAPP, ADMIN_NOME, waLink } from "@/lib/admin-config";
 import { AdecafLogo } from "@/components/logo";
 import { traduzirErro } from "@/lib/translate-error";
+import { DateBRInput } from "@/components/ui/date-br-input";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -203,12 +204,10 @@ function AuthPage() {
             <div className="space-y-3 mt-2">
               <Field label="Nome completo" value={name} onChange={setName} placeholder="Maria Silva" />
               <Field label="Telefone / WhatsApp" value={phone} onChange={setPhone} placeholder="(62) 9 9999-9999" />
-              <Field
-                label="Data de nascimento"
-                value={dataNascimento}
-                onChange={setDataNascimento}
-                type="date"
-              />
+              <div className="space-y-1">
+                <Label className="text-sm">Data de nascimento</Label>
+                <DateBRInput value={dataNascimento} onChange={setDataNascimento} />
+              </div>
               <Field label="Crie uma senha" value={password} onChange={setPassword} placeholder="Mínimo 6 caracteres" type="password" />
 
               <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3">
