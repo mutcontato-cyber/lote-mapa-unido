@@ -432,16 +432,20 @@ function Row({
     <div className="flex gap-0.5">
       {lotes.map((l) => {
         const pr = propsByLote.get(l.id) || [];
-        const fracaoTotal = pr.reduce((acc, p) => acc + Number(p.fracao || 0), 0);
+        const fracaoFromProps = pr.reduce((acc, p) => acc + Number(p.fracao || 0), 0);
+        // Para visitantes (sem acesso a proprietarios), usa a coluna pública fracao_ocupada do lote.
+        const fracaoTotal = publicView ? Number(l.fracao_ocupada ?? 0) : fracaoFromProps;
         // No modo público (visitante) o lote só revela se está livre ou ocupado (azul),
         // sem indicar quem cadastrou nem nuances de status. Usamos a coluna status do lote,
         // que já é mantida atualizada, evitando a necessidade de ler dados privados.
-        const ocupado = publicView ? l.status !== "sem_cadastro" : pr.length > 0;
+        const ocupado = publicView ? fracaoTotal > 0 : pr.length > 0;
         const corBase = publicView
           ? (ocupado ? "#3b82f6" : "var(--status-sem)")
           : `var(--status-${l.status === "sem_cadastro" ? "sem" : l.status})`;
         let bg = corBase;
-        if (!publicView && fracaoTotal > 0 && fracaoTotal < 100) {
+        if (publicView && fracaoTotal > 0 && fracaoTotal < 99.5) {
+          bg = `linear-gradient(180deg, #3b82f6 ${fracaoTotal}%, var(--status-sem) ${fracaoTotal}%)`;
+        } else if (!publicView && fracaoTotal > 0 && fracaoTotal < 100) {
           bg = `linear-gradient(90deg, var(--status-${l.status === "sem_cadastro" ? "sem" : l.status}) ${fracaoTotal}%, var(--status-sem) ${fracaoTotal}%)`;
         }
 
@@ -449,7 +453,7 @@ function Row({
           <button
             key={l.id}
             onClick={() => {
-              if (publicView && ocupado) {
+              if (publicView && fracaoTotal >= 99.5) {
                 toast.info("Lote já ocupado", {
                   description: "Este lote já possui cadastro e não pode ser alterado.",
                 });
