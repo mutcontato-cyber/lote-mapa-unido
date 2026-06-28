@@ -407,7 +407,7 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
         )}
 
         {!(jaApoiam.length > 0 && !isStaff) && (
-          <>
+          <div className="contents">
             {jaCadastradoGlobal && !isStaff && (
               <Alert variant="destructive">
                 <AlertDescription className="text-xs">
