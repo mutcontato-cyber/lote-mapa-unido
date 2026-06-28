@@ -13,6 +13,7 @@ import { recomputeLoteStatus, type Lote, type Proprietario, type Quadra } from "
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { LotTile, STATUS_LABEL } from "./lot-tile";
+import { DateBRInput } from "@/components/ui/date-br-input";
 
 interface Props {
   lote: Lote;
@@ -338,10 +339,9 @@ export function LotSheet({ lote, quadra, open, onOpenChange, onSaved }: Props) {
                 </div>
                 <div>
                   <Label className="text-xs">Data de nascimento</Label>
-                  <Input
-                    type="date"
+                  <DateBRInput
                     value={m.data_nascimento ?? ""}
-                    onChange={(e) => updateMorador(i, { data_nascimento: e.target.value || null })}
+                    onChange={(iso) => updateMorador(i, { data_nascimento: iso || null })}
                   />
                 </div>
                 <div>
