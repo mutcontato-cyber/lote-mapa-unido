@@ -486,7 +486,7 @@ function Legend({ status, count }: { status: LoteStatus; count: number }) {
   );
 }
 
-function LegendCustom({ color, label, count }: { color: string; label: string; count: number }) {
+function LegendCustom({ color, label, count }: { color: string; label: string; count: number | string }) {
   return (
     <div className="flex items-center gap-2">
       <div className="w-4 h-4 rounded border" style={{ background: color }} />
