@@ -602,7 +602,7 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
             {loading ? "Enviando…" : "Confirmar apoio 💚"}
           </Button>
         </DialogFooter>
-          </>
+          </div>
         )}
       </DialogContent>
     </Dialog>
