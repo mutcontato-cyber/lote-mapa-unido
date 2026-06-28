@@ -406,16 +406,17 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
           </div>
         )}
 
-        {/* Visitantes não veem o formulário de cadastro em lotes já ocupados */}
         {!(jaApoiam.length > 0 && !isStaff) && (
-          <Alert variant="destructive">
-            <AlertDescription className="text-xs">
-              Você já possui um cadastro no sistema. Cada morador só pode preencher 1 vez em apenas um lote.
-            </AlertDescription>
-          </Alert>
-        )}
+          <>
+            {jaCadastradoGlobal && !isStaff && (
+              <Alert variant="destructive">
+                <AlertDescription className="text-xs">
+                  Você já possui um cadastro no sistema. Cada morador só pode preencher 1 vez em apenas um lote.
+                </AlertDescription>
+              </Alert>
+            )}
 
-        <div className="space-y-3">
+            <div className="space-y-3">
           <div>
             <Label className="text-xs">Seu nome completo</Label>
             <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Maria Silva" />
