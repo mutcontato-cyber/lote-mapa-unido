@@ -510,17 +510,15 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
                     </div>
                     <div>
                       <Label className="text-xs">Data de nascimento *</Label>
-                      <Input
-                        type="date"
+                      <DateBRInput
                         value={m.data_nascimento}
-                        onChange={(e) =>
+                        onChange={(iso) =>
                           setOutrosMoradores((arr) =>
                             arr.map((item, idx) =>
-                              idx === i ? { ...item, data_nascimento: e.target.value } : item
+                              idx === i ? { ...item, data_nascimento: iso } : item
                             )
                           )
                         }
-                        max={new Date().toISOString().slice(0, 10)}
                       />
                     </div>
                   </div>
