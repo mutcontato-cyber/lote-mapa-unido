@@ -134,6 +134,17 @@ function MapaPage() {
     return counts;
   }, [lotes]);
 
+  // Soma das frações ocupadas (em "lotes"): cada 100% = 1 lote.
+  // Permite contagem fracionária como 3,5 quando meio lote foi cadastrado.
+  const ocupadoFracionado = useMemo(() => {
+    let sum = 0;
+    for (const l of lotes) sum += Number(l.fracao_ocupada ?? 0) / 100;
+    return sum;
+  }, [lotes]);
+  const livreFracionado = Math.max(0, lotes.length - ocupadoFracionado);
+  const fmtFrac = (n: number) =>
+    Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ",");
+
   const lotesByQuadra = useMemo(() => {
     const m = new Map<string, Lote[]>();
     for (const l of lotes) {
@@ -211,8 +222,8 @@ function MapaPage() {
             </div>
           ) : (
           <div className="flex flex-wrap gap-4 text-sm">
-              <LegendCustom color="var(--status-sem)" label="Lote livre" count={totals.sem_cadastro} />
-              <LegendCustom color="#3b82f6" label="Lote ocupado" count={totals.cadastrado + totals.confirmado + totals.incompleto + totals.pendencia} />
+              <LegendCustom color="var(--status-sem)" label="Lote livre" count={fmtFrac(livreFracionado)} />
+              <LegendCustom color="#3b82f6" label="Lote ocupado" count={fmtFrac(ocupadoFracionado)} />
             </div>
           )}
         </Card>
@@ -227,8 +238,8 @@ function MapaPage() {
               </p>
             </div>
             <div className="text-sm text-muted-foreground md:text-right">
-              <div><strong className="text-foreground">{totals.confirmado + totals.cadastrado}</strong> de {lotes.length} lotes já apoiam</div>
-              <div className="text-xs">Faltam {lotes.length - (totals.confirmado + totals.cadastrado)} para o 100%</div>
+              <div><strong className="text-foreground">{fmtFrac(ocupadoFracionado)}</strong> de {lotes.length} lotes já apoiam</div>
+              <div className="text-xs">Faltam {fmtFrac(livreFracionado)} para o 100%</div>
             </div>
           </div>
         </Card>
