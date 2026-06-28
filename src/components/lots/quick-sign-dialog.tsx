@@ -604,7 +604,9 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
         </DialogFooter>
           </div>
         )}
-      </DialogContent>
+      </>
+    )}
+  </DialogContent>
     </Dialog>
   );
 }
