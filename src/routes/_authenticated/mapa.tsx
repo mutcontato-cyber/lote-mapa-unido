@@ -425,8 +425,9 @@ function Row({
         const pr = propsByLote.get(l.id) || [];
         const fracaoTotal = pr.reduce((acc, p) => acc + Number(p.fracao || 0), 0);
         // No modo público (visitante) o lote só revela se está livre ou ocupado (azul),
-        // sem indicar quem cadastrou nem nuances de status.
-        const ocupado = pr.length > 0;
+        // sem indicar quem cadastrou nem nuances de status. Usamos a coluna status do lote,
+        // que já é mantida atualizada, evitando a necessidade de ler dados privados.
+        const ocupado = publicView ? l.status !== "sem_cadastro" : pr.length > 0;
         const corBase = publicView
           ? (ocupado ? "#3b82f6" : "var(--status-sem)")
           : `var(--status-${l.status === "sem_cadastro" ? "sem" : l.status})`;
