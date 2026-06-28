@@ -13,6 +13,7 @@ import type { Lote, Quadra, Proprietario } from "@/lib/queries";
 import { recomputeLoteStatus } from "@/lib/queries";
 import { useAuth } from "@/hooks/use-auth";
 import { ADMIN_WHATSAPP, ADMIN_NOME, waLink } from "@/lib/admin-config";
+import { DateBRInput } from "@/components/ui/date-br-input";
 
 const MELHORIAS_OPCOES: { key: string; label: string }[] = [
   { key: "asfalto", label: "Asfalto" },
@@ -58,22 +59,67 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
   const [loading, setLoading] = useState(false);
   const [confirmado, setConfirmado] = useState<{ mensagem: string } | null>(null);
 
-  // Auto-preencher com dados do morador quando abrir o dialog
+  // Chave do rascunho salvo no navegador (mantém o progresso ao fechar/voltar)
+  const draftKey = `adecaf_draft_lote_${lote.id}`;
+
+  // Auto-preencher com dados do morador / restaurar rascunho ao abrir o dialog
   useEffect(() => {
-    if (open && profile) {
-      setNome(profile.full_name || "");
-      setTelefone(profile.phone || "");
-      setDataNascimento((profile as any).data_nascimento || "");
+    if (open) {
       setConfirmado(null);
-      setChefeCasa(false);
-      setQtdMoradores("");
-      setOutrosMoradores([]);
-      setMelhorias({});
+      // 1) tenta restaurar rascunho local
+      let restored = false;
+      try {
+        const raw = localStorage.getItem(draftKey);
+        if (raw) {
+          const d = JSON.parse(raw);
+          setNome(d.nome ?? "");
+          setTelefone(d.telefone ?? "");
+          setDataNascimento(d.dataNascimento ?? "");
+          setChefeCasa(!!d.chefeCasa);
+          setQtdMoradores(d.qtdMoradores ?? "");
+          setOutrosMoradores(Array.isArray(d.outrosMoradores) ? d.outrosMoradores : []);
+          setMelhorias(d.melhorias ?? {});
+          restored = true;
+        }
+      } catch {
+        /* ignora rascunho corrompido */
+      }
+      // 2) se não havia rascunho, usa o perfil (quando logado)
+      if (!restored) {
+        setNome(profile?.full_name || "");
+        setTelefone(profile?.phone || "");
+        setDataNascimento((profile as any)?.data_nascimento || "");
+        setChefeCasa(false);
+        setQtdMoradores("");
+        setOutrosMoradores([]);
+        setMelhorias({});
+      }
     }
     if (!open) {
       setConfirmado(null);
     }
-  }, [open, profile]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, profile, lote.id]);
+
+  // Salva o progresso automaticamente em localStorage enquanto preenche
+  useEffect(() => {
+    if (!open || confirmado) return;
+    try {
+      const draft = {
+        nome,
+        telefone,
+        dataNascimento,
+        chefeCasa,
+        qtdMoradores,
+        outrosMoradores,
+        melhorias,
+      };
+      localStorage.setItem(draftKey, JSON.stringify(draft));
+    } catch {
+      /* armazenamento cheio/indisponível – ignora */
+    }
+  }, [open, confirmado, nome, telefone, dataNascimento, chefeCasa, qtdMoradores, outrosMoradores, melhorias, draftKey]);
+
   const idade = calcularIdade(dataNascimento);
 
 
@@ -236,6 +282,12 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
 
 
       setConfirmado({ mensagem });
+      // limpa rascunho ao concluir
+      try {
+        localStorage.removeItem(draftKey);
+      } catch {
+        /* noop */
+      }
       onSaved?.();
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao registrar apoio");
