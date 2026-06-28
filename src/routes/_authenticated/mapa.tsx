@@ -128,12 +128,10 @@ function MapaPage() {
       pendencia: 0,
     };
     for (const l of lotes) {
-      const currentProps = propsByLote.get(l.id) ?? [];
-      const st = deriveStatus(currentProps);
-      counts[st]++;
+      counts[l.status]++;
     }
     return counts;
-  }, [lotes, propsByLote]);
+  }, [lotes]);
 
   const lotesByQuadra = useMemo(() => {
     const m = new Map<string, Lote[]>();
