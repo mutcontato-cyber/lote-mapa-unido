@@ -220,7 +220,46 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
       } as any);
       if (insErr) throw insErr;
 
-      // O status do lote é recalculado automaticamente pelo trigger no banco.
+      // Validação pós-cadastro (defesa em profundidade):
+      // 1) o trigger no banco recalcula o status automaticamente.
+      // 2) verificamos se o lote realmente refletiu o cadastro.
+      // 3) se algo falhar, forçamos o recálculo via RPC e re-validamos.
+      // 4) se ainda assim não atualizar, NÃO confirmamos sucesso ao usuário.
+      async function verificarLoteAtualizado(): Promise<{ ok: boolean; status?: string; fracao?: number }> {
+        const { data, error } = await supabase
+          .from("lotes")
+          .select("status, fracao_ocupada")
+          .eq("id", lote.id)
+          .maybeSingle();
+        if (error || !data) return { ok: false };
+        const okStatus = data.status !== "sem_cadastro";
+        const okFracao = Number(data.fracao_ocupada ?? 0) > 0;
+        return { ok: okStatus && okFracao, status: data.status, fracao: Number(data.fracao_ocupada ?? 0) };
+      }
+
+      let verif = await verificarLoteAtualizado();
+      if (!verif.ok) {
+        // tenta recálculo manual via RPC (SECURITY DEFINER)
+        await supabase.rpc("recalcular_status_lote", { p_lote_id: lote.id });
+        await new Promise((r) => setTimeout(r, 400));
+        verif = await verificarLoteAtualizado();
+      }
+      // registra resultado da verificação para auditoria
+      await supabase.from("cadastro_audit_log" as any).insert({
+        lote_id: lote.id,
+        evento: verif.ok ? "cadastro_validado" : "cadastro_inconsistente",
+        detalhes: {
+          nome: nome.trim(),
+          telefone: telefone.trim(),
+          status_pos: verif.status,
+          fracao_pos: verif.fracao,
+        },
+      });
+      if (!verif.ok) {
+        throw new Error(
+          "O cadastro foi gravado, mas o lote não foi marcado como ocupado. Recarregue a página e tente novamente — se persistir, avise o administrador.",
+        );
+      }
 
       // Salvar dados das outras pessoas que moram no lote
       if (outrosMoradores.length > 0) {

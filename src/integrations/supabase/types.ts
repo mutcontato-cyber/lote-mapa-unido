@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      cadastro_audit_log: {
+        Row: {
+          created_at: string
+          detalhes: Json | null
+          evento: string
+          id: string
+          lote_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detalhes?: Json | null
+          evento: string
+          id?: string
+          lote_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detalhes?: Json | null
+          evento?: string
+          id?: string
+          lote_id?: string | null
+        }
+        Relationships: []
+      }
       configuracoes: {
         Row: {
           id: string
@@ -380,6 +404,14 @@ export type Database = {
       apagar_msg_customizada: {
         Args: { secret_token: string; telefone_alvo: string }
         Returns: undefined
+      }
+      auditar_e_corrigir_lotes: {
+        Args: never
+        Returns: {
+          antes: Json
+          depois: Json
+          lote_id: string
+        }[]
       }
       disparar_aniversarios_com_fallback: { Args: never; Returns: Json }
       get_dados_aniversario: { Args: { secret_token: string }; Returns: Json }
