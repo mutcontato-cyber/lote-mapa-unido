@@ -101,7 +101,7 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
         const ultimo = lerUltimoCadastro();
         setNome(profile?.full_name || ultimo.nome || "");
         setTelefone(profile?.phone || ultimo.telefone || "");
-        setDataNascimento((profile as any)?.data_nascimento || ultimo.dataNascimento || "");
+        setDataNascimento(profile?.data_nascimento || ultimo.dataNascimento || "");
         setChefeCasa(false);
         setQtdMoradores("");
         setOutrosMoradores([]);
@@ -113,6 +113,18 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, profile, lote.id]);
+
+  // Garante o preenchimento mesmo quando o perfil termina de carregar depois do modal abrir.
+  useEffect(() => {
+    if (!open || confirmado) return;
+    const ultimo = lerUltimoCadastro();
+    if (!nome.trim() && (profile?.full_name || ultimo.nome)) setNome(profile?.full_name || ultimo.nome || "");
+    if (!telefone.trim() && (profile?.phone || ultimo.telefone)) setTelefone(profile?.phone || ultimo.telefone || "");
+    if (!dataNascimento && (profile?.data_nascimento || ultimo.dataNascimento)) {
+      setDataNascimento(profile?.data_nascimento || ultimo.dataNascimento || "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, confirmado, profile?.full_name, profile?.phone, profile?.data_nascimento]);
 
   // Salva o progresso automaticamente em localStorage enquanto preenche
   useEffect(() => {

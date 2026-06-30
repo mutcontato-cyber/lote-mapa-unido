@@ -8,6 +8,7 @@ export interface Profile {
   id: string;
   full_name: string;
   phone: string;
+  data_nascimento?: string | null;
   loteamento_id: string | null;
 }
 
