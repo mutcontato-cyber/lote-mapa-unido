@@ -61,6 +61,18 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
 
   // Chave do rascunho salvo no navegador (mantém o progresso ao fechar/voltar)
   const draftKey = `adecaf_draft_lote_${lote.id}`;
+  // Cache global dos últimos dados pessoais do morador (usado em qualquer lote)
+  const lastUserKey = "adecaf_last_user";
+
+  function lerUltimoCadastro(): { nome?: string; telefone?: string; dataNascimento?: string } {
+    try {
+      const raw = localStorage.getItem(lastUserKey);
+      if (!raw) return {};
+      return JSON.parse(raw);
+    } catch {
+      return {};
+    }
+  }
 
   // Auto-preencher com dados do morador / restaurar rascunho ao abrir o dialog
   useEffect(() => {
@@ -86,9 +98,10 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
       }
       // 2) se não havia rascunho, usa o perfil (quando logado)
       if (!restored) {
-        setNome(profile?.full_name || "");
-        setTelefone(profile?.phone || "");
-        setDataNascimento((profile as any)?.data_nascimento || "");
+        const ultimo = lerUltimoCadastro();
+        setNome(profile?.full_name || ultimo.nome || "");
+        setTelefone(profile?.phone || ultimo.telefone || "");
+        setDataNascimento((profile as any)?.data_nascimento || ultimo.dataNascimento || "");
         setChefeCasa(false);
         setQtdMoradores("");
         setOutrosMoradores([]);
@@ -323,6 +336,19 @@ export function QuickSignDialog({ lote, quadra, proprietarios, allProps = [], op
       // limpa rascunho ao concluir
       try {
         localStorage.removeItem(draftKey);
+      } catch {
+        /* noop */
+      }
+      // salva os dados pessoais para pré-preencher cadastros futuros (outros lotes)
+      try {
+        localStorage.setItem(
+          lastUserKey,
+          JSON.stringify({
+            nome: nome.trim(),
+            telefone: telefone.trim(),
+            dataNascimento,
+          }),
+        );
       } catch {
         /* noop */
       }
