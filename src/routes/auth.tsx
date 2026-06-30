@@ -128,6 +128,14 @@ function AuthPage() {
       // Usa o loteamento da URL ou do localStorage (salvo quando acessou o link)
       const loteamentoId = loteamentoParam || localStorage.getItem("adecaf_loteamento_lock") || undefined;
       await signUpWithPhonePassword(phone, name, password, TERMO_TEXTO, dataNascimento, loteamentoId);
+      localStorage.setItem(
+        "adecaf_last_user",
+        JSON.stringify({
+          nome: name.trim(),
+          telefone: phone.trim(),
+          dataNascimento,
+        }),
+      );
       // Limpa o localStorage pois agora está no banco
       if (loteamentoId) localStorage.removeItem("adecaf_loteamento_lock");
       if (loteamentoParam) {
